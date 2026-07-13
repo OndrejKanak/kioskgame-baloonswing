@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="cs">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Houpadlo – hry</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <!-- Jeviště s pevným poměrem na výšku 9:16 (FHD 1080×1920).
+       Na Pi vyplní celý displej, na širokém monitoru se vycentruje. -->
+  <div id="stage">
+
+    <!-- ATRAKTOR (klidová obrazovka) -->
+    <section id="screen-attract" class="screen">
+      <div class="attract-inner">
+        <h1 class="title">Aninka<br />prdinka</h1>
+        <div class="balloon-emblem floaty"></div>
+        <p class="cta">Vlož minci<br />nebo přilož kartu</p>
+        <p class="hint pulse">a leť k oblakům!</p>
+      </div>
+      <img class="brand-logo" src="assets/International_logo_red.png" alt="International player" />
+    </section>
+
+    <!-- MENU výběru hry -->
+    <section id="screen-menu" class="screen">
+      <h1 class="menu-title">Vyber si hru</h1>
+      <div class="menu-grid">
+        <button class="game-card" data-game="balloon">
+          <div class="card-emblem balloon-emblem"></div>
+          <span class="card-label">Balónková výprava</span>
+        </button>
+        <button class="game-card" data-game="game2">
+          <div class="card-emblem balloon-emblem flappy-tint"></div>
+          <span class="card-label">Balónkový let</span>
+        </button>
+      </div>
+      <img class="brand-logo small" src="assets/International_logo_red.png" alt="International player" />
+    </section>
+
+    <!-- HRA 1: balon -->
+    <section id="screen-balloon" class="screen">
+      <canvas id="balloon-canvas"></canvas>
+      <button class="back-btn" data-action="menu">‹ Menu</button>
+    </section>
+
+    <!-- HRA 2: Balónkový let -->
+    <section id="screen-game2" class="screen">
+      <canvas id="flappy-canvas"></canvas>
+      <button class="back-btn" data-action="menu">‹ Menu</button>
+    </section>
+
+    <!-- AHOJ (konec jízdy) -->
+    <section id="screen-goodbye" class="screen">
+      <div class="goodbye-inner">
+        <div class="wave">👋</div>
+        <h1>Ahoj!</h1>
+        <p id="goodbye-stats" class="goodbye-stats"></p>
+        <p>Přijď zas si zalítat.</p>
+      </div>
+      <img class="brand-logo small" src="assets/International_logo_red.png" alt="International player" />
+    </section>
+
+    <!-- DEV lišta (jen pro vývoj; vypne se v config.js: debug = false) -->
+    <div id="dev-bar">
+      <button id="dev-toggle">Simuluj jízdu (G)</button>
+      <span id="dev-status">…</span>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/assets.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/gfx.js"></script>
+  <script src="js/balloon.js"></script>
+  <script src="js/flappy.js"></script>
+  <script src="js/main.js"></script>
+</body>
+
+</html>

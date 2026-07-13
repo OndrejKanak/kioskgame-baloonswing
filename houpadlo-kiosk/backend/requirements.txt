@@ -1,0 +1,7 @@
+# Backend kiosku
+flask>=3.0
+
+# Pouze na Raspberry Pi (Linux/aarch64). Na vývojovém PC se NEINSTALUJÍ a kód
+# si poradí bez nich (běží v simulačním režimu). RPi.GPIO na Pi 5 NEPOUŽÍVAT!
+gpiozero>=2.0; platform_system == "Linux"
+lgpio>=0.2;   platform_system == "Linux"

@@ -1,0 +1,29 @@
+# systemd UŽIVATELSKÁ služba pro autostart kiosku.
+# Umístění: ~/.config/systemd/user/kiosk.service
+#
+# Instalace (jako uživatel 'pi' nebo tvůj účet s desktopem):
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/kiosk.service ~/.config/systemd/user/
+#   # uprav ExecStart cestu níže, ať sedí na umístění projektu
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now kiosk.service
+#   sudo loginctl enable-linger $USER   # ať jede i bez přihlášení přes SSH
+#
+# Pozn.: Chromium potřebuje běžící grafickou (Wayland) session. Tato služba
+# proto cílí na graphical-session.target. Pokud autostart zlobí, alternativa
+# je klasický autostart přes ~/.config/labwc/autostart nebo .desktop soubor.
+
+[Unit]
+Description=Houpadlo kiosek (backend + Chromium)
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# UPRAV cestu podle umístění projektu:
+ExecStart=/home/pi/houpadlo-kiosk/deploy/start-kiosk.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target
