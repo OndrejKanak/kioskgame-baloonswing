@@ -91,10 +91,29 @@ class BalloonGame {
     this.streaks = [];
     this.trailT = 0;
 
+    // stoupavé proudy + hvězdy na noční obloze (výškové vrstvy)
+    this.thermals = [];
+    this.thermalT = _rand(CONFIG.world.thermalEvery[0], CONFIG.world.thermalEvery[1]);
+    this.inThermal = false;
+    this.skyStars = [];
+    for (let i = 0; i < 60; i++) {
+      this.skyStars.push({
+        x: Math.random() * this.W,
+        y: Math.random() * this.H * 0.75,
+        r: _rand(1.5, 3.5) * this.s,
+        ph: _rand(0, 6.28),
+      });
+    }
+
     // statistiky téhle hry (nikam se neukládají)
     this.starCount = 0;
     this.meters = 0;
     this.hudPulse = 0;
+    this.nextAltitude = 100; // další výškový milník (m)
+
+    // zábavné prvky (racek, bubliny, duha, milníky)
+    this.fun = new FunFX(this);
+    this.fun.reset();
 
     this._initWorld();
 
@@ -142,6 +161,8 @@ class BalloonGame {
   _pointerDown(e) {
     this.pointerActive = true;
     const p = this._canvasPoint(e);
+    // nejdřív zábavné prvky: bublina praskne / racek se vyplaší
+    this.fun.tap(p.x, p.y);
     this.targetX = p.x;
     this.targetY = p.y;
     // ťuknutí přímo na balon -> zavrtění + jiskry + zvuk
@@ -219,6 +240,9 @@ class BalloonGame {
       driftPhase: _rand(0, Math.PI * 2),
       puffs: this._makePuffs(),
       alpha: 1,
+      hasFace: true,   // ospalá očka; po žuchnutí se lekne a usměje
+      faceT: 0,
+      shy: Math.random() < CONFIG.world.shyChance, // plachý mrak uhne
     });
   }
 
@@ -360,7 +384,9 @@ class BalloonGame {
     const r = this.balloonW * 0.34; // přibližný poloměr balonu
     const bx = b.x;
     const by = b.y + b.oy;
-    const dyNominal = C.world.riseSpeed * S * dt;
+    // stoupavý proud: uvnitř sloupu balon stoupá mnohem rychleji
+    const boost = this._updateThermals(dt, bx, by, r);
+    const dyNominal = C.world.riseSpeed * S * boost * dt;
     let dy = dyNominal;
     let blocker = null;
     for (const c of this.clouds) {
@@ -380,13 +406,20 @@ class BalloonGame {
       this._bounceFx(blocker, bx, by, r); // odskok dolů (s cooldownem)
     }
 
-    // mraky (+ jemný boční pohyb, odeznívání efektů)
+    // mraky (+ jemný boční pohyb, odeznívání efektů, plaché uhýbání)
+    const shyRange = C.world.shyRange * S;
     for (const c of this.clouds) {
       c.y += dy;
       c.driftPhase += dt;
       c.x += Math.sin(c.driftPhase) * C.world.cloudDrift * S * dt;
       c.puff = Math.max(0, c.puff - dt * 2.2);
       c.cd = Math.max(0, c.cd - dt);
+      c.faceT = Math.max(0, (c.faceT || 0) - dt); // výraz obličeje odeznívá
+      // plachý mrak: když se balon blíží zespodu, uhne do strany
+      if (c.shy && c.y < by && by - c.y < shyRange && Math.abs(c.x - bx) < shyRange) {
+        const away = c.x >= bx ? 1 : -1;
+        c.x += away * C.world.shySpeed * S * dt;
+      }
     }
     this.clouds = this.clouds.filter((c) => c.y - c.h < this.H + 120);
     this._ensureClouds();
@@ -414,6 +447,7 @@ class BalloonGame {
         this._burst(st.x, st.y, 14, 'gold');
         GFX.addPopup(this.popups, st.x, st.y - 50 * S, '+1');
         Sound.star();
+        this.fun.onStars(this.starCount, bx, by); // milník = konfety + fanfára
       }
     }
     this.stars = this.stars.filter((st) => !st.collected && st.y - st.r < this.H + 60);
@@ -443,9 +477,30 @@ class BalloonGame {
           b.y + b.oy + this.balloonH * 0.42,
           _rand(-25, 25) * S,
           120 * S,
-          S
+          S,
+          this.fun.trailHue(this.t) // po průletu duhou je stopa duhová
         );
       }
+    }
+
+    // zábavné prvky (racek, pírka, bubliny, duha, milníky)
+    // POZOR: bx/by jsou z okamžiku posunu světa; _resolveOverlaps mohl balonem
+    // ještě pohnout. Racek sedící na balonu musí dostat AKTUÁLNÍ polohu,
+    // jinak o snímek zaostává a při rychlém pohybu "odskakuje".
+    const curX = b.x;
+    const curY = b.y + b.oy;
+    this.starCount += this.fun.update(dt, 0, dy, {
+      x: curX,
+      y: curY,
+      r: collectR,
+      top: curY - GFX.balloonVisualHeight(this.balloonW) * 0.5, // skutečný vršek kopule
+    });
+
+    // výškové milníky: každých 100 m cedule
+    if (this.meters >= this.nextAltitude) {
+      this.fun.showBanner(`${this.nextAltitude} metrů! 🎈`);
+      Sound.fanfare();
+      this.nextAltitude += 100;
     }
 
     // jiskřičky / obláčky částic + "+1" popupy
@@ -493,10 +548,52 @@ class BalloonGame {
     if (cloud.cd > 0) return;
     cloud.cd = 0.7;
     cloud.puff = 1;
+    cloud.faceT = 1.6; // mrak se lekne a pak se usměje
     this.balloon.vy += CONFIG.world.bounceImpulse * this.s; // odskok dolů
     this.balloon.squash = 1;
     this._burst(bx, by - r, 10, 'white');
     Sound.bounce();
+  }
+
+  /** Stoupavé proudy: spawn, posun a zjištění, jestli je v nich balon.
+   *  Vrací násobitel rychlosti stoupání (1 = normál). */
+  _updateThermals(dt, bx, by, r) {
+    const C = CONFIG.world;
+    const S = this.s;
+    this.thermalT -= dt;
+    if (this.thermalT <= 0) {
+      this.thermalT = _rand(C.thermalEvery[0], C.thermalEvery[1]);
+      const w = C.thermalWidth * S;
+      const h = C.thermalHeight * S;
+      this.thermals.push({
+        x: _rand(w / 2 + 40 * S, this.W - w / 2 - 40 * S),
+        y: -h / 2,
+        w,
+        h,
+        phase: 0,
+      });
+    }
+    let boost = 1;
+    let inside = false;
+    for (const t of this.thermals) {
+      t.phase += dt;
+      if (
+        Math.abs(bx - t.x) < t.w / 2 + r * 0.4 &&
+        by > t.y - t.h / 2 &&
+        by < t.y + t.h / 2
+      ) {
+        inside = true;
+        boost = C.thermalBoost;
+      }
+    }
+    // proudy se posouvají dolů spolu se světem (základní rychlostí)
+    const dy = C.riseSpeed * S * boost * dt;
+    for (const t of this.thermals) t.y += dy;
+    this.thermals = this.thermals.filter((t) => t.y - t.h / 2 < this.H + 100 * S);
+
+    if (inside && !this.inThermal) Sound.whoosh(); // zvuk jen při vstupu
+    this.inThermal = inside;
+    return boost;
   }
 
   _updateBirds(dt) {
@@ -537,17 +634,50 @@ class BalloonGame {
     const ctx = this.ctx;
     ctx.imageSmoothingEnabled = false; // ostrá pixel-art grafika
     this._drawSky(ctx);
+    this._drawAltitude(ctx);   // ztmavení oblohy + hvězdy ve výšce
     this._drawStreaks(ctx);
+    this.fun.renderBack(ctx);  // duha patří za mraky
     for (const c of this.farClouds) this._drawCloud(ctx, c);
+    for (const t of this.thermals) GFX.drawThermal(ctx, t);
     for (const st of this.stars) this._drawStar(ctx, st);
     for (const c of this.clouds) this._drawCloud(ctx, c);
     this._drawSparkles(ctx);
     this._drawBirds(ctx);
     this._drawBalloon(ctx);
+    this.fun.renderFront(ctx); // bubliny, pírka, racek
     if (CONFIG.effects.fog) GFX.drawFog(ctx, this.W, this.H);
     if (CONFIG.effects.logoInGame) GFX.drawLogo(ctx, Assets.get('logo'), this.W, this.H, this.s);
     GFX.drawPopups(ctx, this.popups, this.s);
     this._drawHud(ctx);
+    this.fun.renderBanner(ctx);
+  }
+
+  /** Výškové vrstvy: čím výš, tím tmavší obloha a víc hvězd.
+   *  0–150 m běžná obloha, 150–350 m vysoko, nad 350 m soumrak. */
+  _drawAltitude(ctx) {
+    if (!CONFIG.effects.altitudeLayers) return;
+    const m = this.meters;
+    if (m < 150) return;
+    const k = Math.min(1, (m - 150) / 260); // 0..1 přechod do soumraku
+    ctx.save();
+    const grad = ctx.createLinearGradient(0, 0, 0, this.H);
+    grad.addColorStop(0, `rgba(18, 22, 62, ${0.72 * k})`);
+    grad.addColorStop(0.6, `rgba(50, 40, 95, ${0.5 * k})`);
+    grad.addColorStop(1, `rgba(120, 80, 110, ${0.2 * k})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, this.W, this.H);
+    // blikající hvězdy
+    if (k > 0.25) {
+      ctx.fillStyle = '#ffffff';
+      for (const st of this.skyStars) {
+        const tw = 0.45 + 0.55 * Math.sin(this.t * 2.2 + st.ph);
+        ctx.globalAlpha = k * tw * 0.9;
+        ctx.beginPath();
+        ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   _drawSky(ctx) {
@@ -634,21 +764,10 @@ class BalloonGame {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(tilt);
-    if (img) {
-      const cols = CONFIG.balloon.frameCols;
-      const col = b.frame % cols;
-      const row = Math.floor(b.frame / cols);
-      ctx.drawImage(
-        img,
-        col * this.frameW,
-        row * this.frameH,
-        this.frameW,
-        this.frameH,
-        -dw / 2,
-        -dh / 2,
-        dw,
-        dh
-      );
+    // postup k dalsimu snimku (0..1) - pouziva se pri prolinani
+    const frameT = b.frameTime * CONFIG.balloon.fps;
+    if (GFX.drawBalloon(ctx, b.frame, frameT, this.balloonW, sx, sy)) {
+      // vykresleno sdilenym helperem (registrovane snimky + vyhlazeni)
     } else {
       // náhradní balon, dokud není grafika
       ctx.fillStyle = '#2e8b57';

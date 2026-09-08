@@ -72,6 +72,17 @@ class FlappyGame {
     this.meters = 0;
     this.hudPulse = 0;
 
+    // obruče, poryvy větru, odlétající racci ze sloupů
+    this.hoops = [];
+    this.gusts = [];
+    this.gustT = _rand(CONFIG.flappy.gustEvery[0], CONFIG.flappy.gustEvery[1]);
+    this.inGust = false;
+    this.departing = [];
+
+    // zábavné prvky (racek, bubliny, milníky) – duha je jen ve hře 1
+    this.fun = new FunFX(this);
+    this.fun.reset({ rainbow: false });
+
     // první sloup až kus za obrazovkou, ať má dítě čas se rozkoukat
     this._nextColX = this.W + 300 * this.s;
     this._ensureColumns();
@@ -105,7 +116,14 @@ class FlappyGame {
   }
 
   // ---- vstup --------------------------------------------------------------
-  _pointerDown() {
+  _pointerDown(e) {
+    // nejdřív zábavné prvky: bublina praskne / racek se vyplaší
+    if (e && this.fun) {
+      const rect = this.canvas.getBoundingClientRect();
+      const px = ((e.clientX - rect.left) / rect.width) * this.W;
+      const py = ((e.clientY - rect.top) / rect.height) * this.H;
+      this.fun.tap(px, py);
+    }
     this._flap();
   }
 
@@ -153,11 +171,21 @@ class FlappyGame {
     for (let cy = gapY - gapH / 2 - step * 0.35; cy > -step; cy -= step) {
       segs.push(this._makeSeg(cy, w, S));
     }
+    const belowFrom = segs.length;
     for (let cy = gapY + gapH / 2 + step * 0.35; cy < this.H + step; cy += step) {
       segs.push(this._makeSeg(cy, w, S));
     }
+    // obličej dostane jen obláček přímo u mezery (nad ní a pod ní)
+    if (segs[0]) segs[0].hasFace = true;
+    if (segs[belowFrom]) segs[belowFrom].hasFace = true;
 
-    this.columns.push({ x, w, gapY, gapH, segs, puff: 0, cd: 0 });
+    // racek posedávající na horní hraně spodního stohu
+    const perch =
+      Math.random() < CONFIG.flappy.perchChance
+        ? { y: gapY + gapH / 2 - 14 * S, phase: _rand(0, 6.28), gone: false }
+        : null;
+
+    this.columns.push({ x, w, gapY, gapH, segs, puff: 0, cd: 0, perch });
 
     // hvězdička uprostřed mezery
     if (CONFIG.stars.enabled) {
@@ -179,8 +207,21 @@ class FlappyGame {
     const S = this.s;
     const F = CONFIG.flappy;
     while (this._nextColX < this.W * 2) {
-      this._spawnColumn(this._nextColX);
-      this._nextColX += _rand(F.spacingMin, F.spacingMax) * S;
+      const colX = this._nextColX;
+      this._spawnColumn(colX);
+      const spacing = _rand(F.spacingMin, F.spacingMax) * S;
+      // obruč doprostřed mezi sloupy: průlet = bonusová hvězdička
+      if (Math.random() < F.hoopChance) {
+        const r = F.hoopRadius * S;
+        this.hoops.push({
+          x: colX + spacing * 0.5,
+          y: _rand(r + 120 * S, this.H - r - 120 * S),
+          r,
+          phase: _rand(0, 6.28),
+          passed: false,
+        });
+      }
+      this._nextColX = colX + spacing;
     }
   }
 
@@ -276,7 +317,8 @@ class FlappyGame {
     // (uvnitř mezery ho drží měkké mantinely).
     const bxk = this.bx + this.kx; // skutečná poloha balonu (vč. odražení)
     const nose = bxk + r;          // "nos" balonu
-    const dxNominal = F.scrollSpeed * S * dt;
+    const gustBoost = this._updateGusts(dt, bxk, b.y);
+    const dxNominal = F.scrollSpeed * S * gustBoost * dt;
     let dx = dxNominal;
     for (const c of this.columns) {
       const cw = c.w * 0.85; // kolizní šířka užší než vizuál (shovívavost)
@@ -319,13 +361,58 @@ class FlappyGame {
 
     // sloupy
     this._nextColX -= dx;
+    const startleRange = 420 * S;
     for (const c of this.columns) {
       c.x -= dx;
       c.puff = Math.max(0, c.puff - dt * 2.2);
       c.cd = Math.max(0, c.cd - dt);
+      for (const seg of c.segs) if (seg.faceT) seg.faceT = Math.max(0, seg.faceT - dt);
+      // racek na sloupu se při přiblížení balonu vyplaší a odletí
+      if (c.perch && !c.perch.gone) {
+        c.perch.phase += dt * 2;
+        if (Math.abs(c.x - bxk) < startleRange) {
+          c.perch.gone = true;
+          this.departing.push({
+            x: c.x,
+            y: c.perch.y,
+            size: 100 * S,
+            dir: -1,
+            phase: 0,
+            rot: -0.15,
+            folded: false,
+            vx: -_rand(230, 340) * S,
+            vy: -_rand(150, 260) * S,
+          });
+          Sound.gull();
+        }
+      }
     }
     this.columns = this.columns.filter((c) => c.x + c.w > -250 * S);
     this._ensureColumns();
+
+    // odlétající racci ze sloupů
+    for (const g of this.departing) {
+      g.phase += dt * 11;
+      g.x += g.vx * dt - dx;
+      g.y += g.vy * dt;
+    }
+    this.departing = this.departing.filter((g) => g.x > -260 * S && g.y > -260 * S);
+
+    // obruče: průlet středem = bonusová hvězdička
+    for (const hp of this.hoops) {
+      hp.x -= dx;
+      hp.phase += dt * 2.4;
+      if (!hp.passed && Math.abs(hp.x - bxk) < r && Math.abs(b.y - hp.y) < hp.r * 0.72) {
+        hp.passed = true;
+        this.starCount++;
+        this.hudPulse = 1;
+        GFX.burst(this.sparkles, hp.x, hp.y, 18, 'gold', S);
+        GFX.addPopup(this.popups, hp.x, hp.y - 60 * S, '+1');
+        Sound.star();
+        this.fun.onStars(this.starCount, bxk, b.y);
+      }
+    }
+    this.hoops = this.hoops.filter((hp) => hp.x + hp.r > -80 * S);
 
     // vzdálené mraky (parallax)
     for (const c of this.farClouds) c.x -= dx * 0.35;
@@ -346,6 +433,7 @@ class FlappyGame {
         GFX.burst(this.sparkles, st.x, st.y, 14, 'gold', S);
         GFX.addPopup(this.popups, st.x, st.y - 50 * S, '+1');
         Sound.star();
+        this.fun.onStars(this.starCount, bxk, b.y); // milník = konfety + fanfára
       }
     }
     this.stars = this.stars.filter((st) => !st.collected && st.x + st.r > -60);
@@ -372,10 +460,19 @@ class FlappyGame {
           b.y + this.balloonH * _rand(0.05, 0.3),
           -(dx / dt) * 0.55,
           _rand(-30, 30) * S,
-          S
+          S,
+          this.fun.trailHue(this.t) // po průletu duhou je stopa duhová
         );
       }
     }
+
+    // zábavné prvky (racek, pírka, bubliny, milníky)
+    this.starCount += this.fun.update(dt, -dx, 0, {
+      x: bxk,
+      y: b.y,
+      r: collectR,
+      top: b.y - GFX.balloonVisualHeight(this.balloonW) * 0.5, // skutecny vrsek kopule
+    });
 
     this.sparkles = GFX.updateParticles(this.sparkles, dt);
     this.popups = GFX.updatePopups(this.popups, dt);
@@ -392,6 +489,8 @@ class FlappyGame {
     if (column.cd <= 0) {
       column.cd = 0.6;
       column.puff = 1;
+      // mrak u mezery se lekne a pak se usměje
+      for (const seg of column.segs) if (seg.hasFace) seg.faceT = 1.6;
       b.squash = 1;
       b.stun = CONFIG.flappy.stunTime;
       this.kvx = -CONFIG.flappy.knockback * this.s; // odraz dozadu
@@ -401,6 +500,42 @@ class FlappyGame {
       const dir = column.gapY > b.y ? 1 : -1;
       b.vy = dir * CONFIG.flappy.deflect * this.s;
     }
+  }
+
+  /** Větrné poryvy: spawn, posun a zjištění, jestli je v nich balon.
+   *  Vrací násobitel rychlosti letu (1 = normál). */
+  _updateGusts(dt, bx, by) {
+    const F = CONFIG.flappy;
+    const S = this.s;
+    this.gustT -= dt;
+    if (this.gustT <= 0) {
+      this.gustT = _rand(F.gustEvery[0], F.gustEvery[1]);
+      const h = F.gustHeight * S;
+      this.gusts.push({
+        x: this.W + (F.gustWidth * S) / 2,
+        y: _rand(h / 2 + 60 * S, this.H - h / 2 - 60 * S),
+        w: F.gustWidth * S,
+        h,
+        phase: 0,
+      });
+    }
+    let boost = 1;
+    let inside = false;
+    for (const g of this.gusts) {
+      g.phase += dt;
+      if (Math.abs(bx - g.x) < g.w / 2 && Math.abs(by - g.y) < g.h / 2) {
+        inside = true;
+        boost = F.gustBoost;
+      }
+    }
+    // poryv se posouvá doleva spolu se světem (základní rychlostí)
+    const dx = F.scrollSpeed * S * boost * dt;
+    for (const g of this.gusts) g.x -= dx;
+    this.gusts = this.gusts.filter((g) => g.x + g.w / 2 > -100 * S);
+
+    if (inside && !this.inGust) Sound.whoosh(); // zvuk jen při vstupu
+    this.inGust = inside;
+    return boost;
   }
 
   _updateBirds(dt) {
@@ -435,16 +570,22 @@ class FlappyGame {
     ctx.imageSmoothingEnabled = false;
     this._drawSky(ctx);
     this._drawStreaks(ctx);
+    this.fun.renderBack(ctx); // (duha je jen ve hře 1)
     for (const c of this.farClouds) GFX.drawCloud(ctx, c, Assets.get('cloud'));
+    for (const g of this.gusts) GFX.drawGust(ctx, g, this.s);
+    for (const hp of this.hoops) GFX.drawHoop(ctx, hp, this.s);
     for (const st of this.stars) GFX.drawStar(ctx, st, this.s);
     this._drawColumns(ctx);
+    for (const g of this.departing) GFX.drawSeagull(ctx, g);
     GFX.drawParticles(ctx, this.sparkles, this.s);
     this._drawBirds(ctx);
     this._drawBalloon(ctx);
+    this.fun.renderFront(ctx); // bubliny, pírka, racek
     if (CONFIG.effects.fog) GFX.drawFog(ctx, this.W, this.H);
     if (CONFIG.effects.logoInGame) GFX.drawLogo(ctx, Assets.get('logo'), this.W, this.H, this.s);
     GFX.drawPopups(ctx, this.popups, this.s);
     if (CONFIG.stars.enabled) GFX.drawHud(ctx, this.W, this.s, this.starCount, this.hudPulse);
+    this.fun.renderBanner(ctx);
   }
 
   _drawSky(ctx) {
@@ -480,9 +621,31 @@ class FlappyGame {
       for (const seg of c.segs) {
         GFX.drawCloud(
           ctx,
-          { x: c.x + seg.ox, y: seg.oy, w: seg.w, h: seg.h, puff: c.puff, puffs: seg.puffs, alpha: 1 },
+          {
+            x: c.x + seg.ox,
+            y: seg.oy,
+            w: seg.w,
+            h: seg.h,
+            puff: c.puff,
+            puffs: seg.puffs,
+            alpha: 1,
+            hasFace: seg.hasFace,
+            faceT: seg.faceT || 0,
+          },
           img
         );
+      }
+      // racek sedící na hraně mezery
+      if (c.perch && !c.perch.gone) {
+        GFX.drawSeagull(ctx, {
+          x: c.x,
+          y: c.perch.y,
+          size: 100 * this.s,
+          dir: -1,
+          phase: c.perch.phase,
+          rot: Math.sin(c.perch.phase * 0.5) * 0.05,
+          folded: true,
+        });
       }
     }
   }
@@ -522,21 +685,10 @@ class FlappyGame {
     ctx.save();
     ctx.translate(this.bx + this.kx, b.y); // kx = fyzické odražení dozadu
     ctx.rotate(tilt);
-    if (img) {
-      const cols = CONFIG.balloon.frameCols;
-      const col = b.frame % cols;
-      const row = Math.floor(b.frame / cols);
-      ctx.drawImage(
-        img,
-        col * this.frameW,
-        row * this.frameH,
-        this.frameW,
-        this.frameH,
-        -dw / 2,
-        -dh / 2,
-        dw,
-        dh
-      );
+    // postup k dalsimu snimku (0..1) - pouziva se pri prolinani
+    const frameT = b.frameTime * CONFIG.balloon.fps;
+    if (GFX.drawBalloon(ctx, b.frame, frameT, this.balloonW, sx, sy)) {
+      // vykresleno sdilenym helperem (registrovane snimky + vyhlazeni)
     } else {
       ctx.fillStyle = '#2e8b57';
       ctx.beginPath();

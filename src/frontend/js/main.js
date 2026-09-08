@@ -22,6 +22,18 @@ const App = {
     // načti grafiku (chybějící obrázky nevadí)
     await Assets.load(CONFIG.assets);
 
+    // zarovnej snímky balonu na společný střed a velikost, aby animace
+    // neposkakovala (viz Assets.buildSprite)
+    if (CONFIG.balloon.register) {
+      Assets.buildSprite(
+        'balloon',
+        CONFIG.balloon.frameCols,
+        CONFIG.balloon.frameRows,
+        CONFIG.balloon.frameCount
+      );
+      this._centerBalloonEmblems();
+    }
+
     this.screens = {
       attract: document.getElementById('screen-attract'),
       menu: document.getElementById('screen-menu'),
@@ -33,8 +45,27 @@ const App = {
     this.game = new BalloonGame(document.getElementById('balloon-canvas'));
     this.game2 = new FlappyGame(document.getElementById('flappy-canvas'));
 
+    // živé náhledy v kartách menu (ukazují, kterým směrem se v té hře letí)
+    this.previews = [...document.querySelectorAll('.card-preview')].map((c) =>
+      new CardPreview(
+        c,
+        c.dataset.preview,
+        // druhá hra má balon barevně odlišený, ať jsou karty rozeznatelné
+        c.dataset.preview === 'right' ? 'hue-rotate(150deg) saturate(0.9)' : null
+      )
+    );
+    this._applyMenuNames();
+
     // zvuk smí prohlížeč pustit až po dotyku -> odemknout při každém ťuknutí
-    window.addEventListener('pointerdown', () => Sound.unlock(), true);
+    // (na kiosku to řeší Chromium flag --autoplay-policy=no-user-gesture-required)
+    window.addEventListener(
+      'pointerdown',
+      () => {
+        Sound.unlock();
+        Music.resume(); // hudba se rozjede, jakmile to prohlížeč dovolí
+      },
+      true
+    );
 
     this._wireUI();
     this._connectSSE();
@@ -43,11 +74,69 @@ const App = {
     this.show('attract');
   },
 
+  /** Názvy her v menu bere z configu; showNames: false je úplně skryje. */
+  _applyMenuNames() {
+    const M = CONFIG.menu || {};
+    document.querySelectorAll('[data-label]').forEach((el) => {
+      if (M.showNames === false) {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = false;
+      const t = M.names && M.names[el.dataset.label];
+      if (t) el.textContent = t;
+    });
+  },
+
+  /** Znak balonu na atraktoru a v menu.
+   *
+   *  CSS ho původně bralo jako celou BUŇKU sprite sheetu – jenže balon v ní
+   *  není uprostřed (u našeho sheetu je o 11 % šířky vpravo), takže působil
+   *  posunutě. Použijeme proto už zaregistrovaný snímek, který má obrys
+   *  přesně vycentrovaný. Funguje to samo i pro jinou grafiku. */
+  _centerBalloonEmblems() {
+    const spr = Assets.sprite('balloon');
+    if (!spr || !spr.frames.length) return; // beze změny -> zůstane CSS varianta
+    let url;
+    try {
+      url = spr.frames[0].toDataURL('image/png');
+    } catch (e) {
+      console.warn('Znak balonu se nepodařilo vycentrovat:', e);
+      return;
+    }
+    document.querySelectorAll('.balloon-emblem').forEach((el) => {
+      el.style.backgroundImage = `url(${url})`;
+      el.style.backgroundSize = 'contain';
+      el.style.backgroundPosition = 'center';
+      el.style.backgroundRepeat = 'no-repeat';
+      el.style.aspectRatio = `${spr.w} / ${spr.h}`;
+    });
+  },
+
   // ---- přepínání obrazovek ----------------------------------------------
+  /** Která skladba patří ke které obrazovce. */
+  MUSIC_FOR: {
+    attract: 'lobby',
+    menu: 'lobby',
+    goodbye: 'lobby',
+    balloon: 'game1',
+    game2: 'game2',
+  },
+
   show(name) {
     this.state = name;
     for (const key in this.screens) {
       this.screens[key].classList.toggle('active', key === name);
+    }
+    const track = this.MUSIC_FOR[name];
+    if (track) Music.play(track);
+
+    // náhledy v kartách běží jen když je menu vidět (šetří výkon na Pi)
+    if (this.previews) {
+      for (const p of this.previews) {
+        if (name === 'menu') p.start();
+        else p.stop();
+      }
     }
   },
 

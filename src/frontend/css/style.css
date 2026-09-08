@@ -55,7 +55,7 @@ body {
 
 /* --- znak balonu (první snímek ze sprite sheetu 6×2) --- */
 .balloon-emblem {
-  --bw: 46cqw;
+  --bw: 36cqw;
   width: var(--bw);
   aspect-ratio: 458.67 / 768;        /* poměr jednoho snímku */
   background: url("../assets/balloon_sheet.png") no-repeat 0 0;
@@ -71,6 +71,10 @@ body {
   gap: 3cqh;
   text-align: center;
   padding: 6cqw;
+  /* dolní odsazení rezervuje místo pro logo. Pozor: celý blok se svisle
+     centruje, takže když je vyšší než obrazovka, ořízne se i nadpis nahoře
+     – proto je zároveň zmenšený znak balonu (--bw níže). */
+  padding-bottom: 14cqh;
 }
 .title {
   margin: 0;
@@ -125,6 +129,14 @@ body {
   font-family: inherit;
 }
 .game-card:active { transform: scale(.97); }
+/* Tvar náhledu sám naznačuje osu hry: na výšku = stoupání, na šířku = let */
+.card-preview {
+  display: block;
+  border-radius: 4cqw;
+  box-shadow: inset 0 0 0 0.5cqw rgba(11,43,86,.15);
+}
+.card-preview.up    { width: 32cqw; height: 40cqw; }
+.card-preview.right { width: 56cqw; height: 32cqw; }
 .card-emblem { --bw: 22cqw; }
 .card-label {
   font-size: 5.6cqw;

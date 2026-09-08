@@ -25,7 +25,22 @@ const CONFIG = {
     frameCols: 6,       // počet sloupců snímků ve sheetu
     frameRows: 2,       // počet řádků snímků
     frameCount: 12,     // kolik snímků se reálně přehrává (≤ cols*rows)
-    fps: 12,            // rychlost přehrávání animace (snímků za sekundu)
+                        //  1 = žádná sprite animace, jen plynulý pohyb (houpání,
+                        //  náklon, stlačení) – nejhladší varianta
+    fps: 5,             // rychlost přehrávání animace (snímků za sekundu).
+                        //  Balon se má houpat pomalu; 12 bylo příliš rychlé.
+
+    // --- plynulost animace ------------------------------------------------
+    // Snímky ve sheetu bývají různě posunuté a různě velké. Registrace je
+    // při načtení automaticky zarovná na společný střed a velikost, takže
+    // balon při přehrávání "neposkakuje".
+    register: true,
+    // Vyhlazené zmenšování spritu (sprite je mnohem větší než balon na
+    // obrazovce). Bez toho sprite při pohybu "mží".
+    smoothScaling: true,
+    // Prolínání mezi snímky – ještě měkčí přechod, ale u nesourodých snímků
+    // může dělat "duchy". Zkus zapnout, jestli se ti to líbí víc.
+    crossFade: false,
     displayWidth: 300,  // šířka balonu (ref. px; výška se dopočítá)
     followSpeed: 6,     // jak svižně balon dojíždí k prstu (víc = rychleji)
     autoCenter: 0,      // 0 = zůstane kde ho pustíš; >0 = pomalu plyne do středu
@@ -51,6 +66,15 @@ const CONFIG = {
     cloudMaxWidth: 720,
     cloudDrift: 24,        // jemný boční pohyb mraků (ref. px/s)
     passageGap: 420,       // zaručená průletná mezera vedle každého mraku (ref. px)
+
+    // stoupavý proud: třpytivý sloup, který balon vystřelí nahoru
+    thermalEvery: [12, 22],  // jak často se objeví (s)
+    thermalWidth: 300,       // šířka sloupu (ref. px)
+    thermalHeight: 1100,     // výška sloupu (ref. px)
+    thermalBoost: 2.8,       // kolikrát rychlejší stoupání uvnitř
+    shyChance: 0.35,         // podíl "plachých" mraků, co uhnou před balonem
+    shyRange: 380,           // na jakou vzdálenost mrak zareaguje (ref. px)
+    shySpeed: 260,           // jak rychle uhýbá (ref. px/s)
   },
 
   // --- Hra 2: Balónkový let (ťukni = poskoč, proleť mezerou v mracích) ----
@@ -75,6 +99,14 @@ const CONFIG = {
     knockback: 1000,      // rychlost odražení balonu dozadu po nárazu (ref. px/s)
     knockReturn: 2400,    // jak rychle se balon vrací dopředu (ref. px/s²)
     knockMax: 320,        // max. vzdálenost odražení dozadu (ref. px)
+
+    hoopChance: 0.65,     // šance na obruč mezi sloupy (průlet = bonus hvězda)
+    hoopRadius: 150,      // poloměr obruče (ref. px)
+    perchChance: 0.5,     // šance, že na sloupu sedí racek (vyplaší se)
+    gustEvery: [14, 26],  // jak často přiletí větrný poryv (s)
+    gustWidth: 900,       // délka poryvu (ref. px)
+    gustHeight: 520,      // výška pásu poryvu (ref. px)
+    gustBoost: 2.4,       // kolikrát rychlejší let uvnitř poryvu
   },
 
   // --- Hvězdičky ke sbírání (nic se neukládá, jen počítadlo během jízdy) --
@@ -94,12 +126,53 @@ const CONFIG = {
     trail: true,        // obláčková stopa za balonem
     fog: true,          // jemná mlha u spodního okraje
     logoInGame: true,   // poloprůhledné logo dole ve hře (watermark)
+    altitudeLayers: true, // hra 1: obloha se mění s výškou (soumrak + hvězdy)
+  },
+
+  // --- Zábavné prvky (racek, bubliny, duha, milníky…) ----------------------
+  //  Všechno jde jednotlivě vypnout. Časy jsou dvojice [min, max] v sekundách.
+  fun: {
+    cloudFaces: true,        // mraky mají ospalá očka, po žuchnutí se leknou a usmějí
+    seagull: true,           // racek přiletí, přistane na balonu a odletí
+    seagullEvery: [10, 20],
+    seagullStay: [3, 5],     // jak dlouho se veze na balonu (s)
+    seagullLoopChance: 0.35, // šance, že místo přistání udělá vývrtku
+    feathers: true,          // racek upustí pírko = bonusová hvězdička
+    bubbles: true,           // mýdlové bubliny k praskání
+    bubbleEvery: [2.5, 6],
+    rainbow: true,           // duha (jen Balónková výprava): od rohu k rohu,
+                             //  průlet obloukem = duhová stopa za balonem
+    rainbowEvery: [24, 45],
+    rainbowTrailTime: 7,     // jak dlouho drží duhová stopa (s)
+    rainbowBulge: 0.16,      // jak moc je oblouk vyklenutý (podíl délky)
+    milestones: [5, 10, 20, 35, 50], // konfety a fanfára při těchto hvězdičkách
   },
 
   // --- Zvuk (procedurální, žádné soubory; na dotyk se sám odemkne) --------
   sound: {
     enabled: true,
     volume: 0.5,   // 0..1
+  },
+
+  // --- Hudba na pozadí ----------------------------------------------------
+  //  Skládá se proceduálně v music.js, takže je bez autorských práv
+  //  a nepotřebuje žádné soubory. Každá obrazovka má svou skladbu:
+  //    lobby (atraktor + menu + Ahoj), game1 (výprava), game2 (let)
+  music: {
+    enabled: true,
+    volume: 0.30,  // 0..1 – schválně tišší než efekty
+  },
+
+  // --- Menu výběru hry ----------------------------------------------------
+  //  Hráči jsou předškoláci, kteří většinou neumí číst – rozdíl mezi hrami
+  //  sděluje hlavně živý náhled v kartě (tvar + pohyb + šipky).
+  //  Názvy jsou tedy spíš pro doprovod; showNames: false je úplně skryje.
+  menu: {
+    showNames: true,
+    names: {
+      balloon: 'Vzhůru!',
+      game2: 'Vpřed!',
+    },
   },
 
   // --- Časování obrazovek -------------------------------------------------

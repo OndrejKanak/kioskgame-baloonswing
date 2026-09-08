@@ -12,8 +12,13 @@ const Sound = {
     return !!(CONFIG.sound && CONFIG.sound.enabled);
   },
 
+  /** Zvukový kontext je potřeba i pro hudbu – efekty se dají vypnout zvlášť. */
+  get audioWanted() {
+    return this.enabled || !!(CONFIG.music && CONFIG.music.enabled);
+  },
+
   unlock() {
-    if (!this.enabled) return;
+    if (!this.audioWanted) return;
     if (!this.ctx) {
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -70,5 +75,38 @@ const Sound = {
   /** Poskok ve hře Balónkový let – měkké "fuf" nahoru. */
   flap() {
     this._blip(170, 330, 0.11, 'sine', 0.22);
+  },
+
+  /** Racek – dvojité "kvák" (klesavé, mírně chraplavé). */
+  gull() {
+    this._blip(900, 620, 0.10, 'sawtooth', 0.13);
+    this._blip(780, 500, 0.13, 'sawtooth', 0.11, 0.14);
+  },
+
+  /** Prasknutí bubliny – krátké lupnutí. */
+  pop2() {
+    this._blip(1200, 300, 0.06, 'sine', 0.28);
+  },
+
+  /** Sebrané pírko – měkké cinknutí. */
+  feather() {
+    this._blip(1050, 1400, 0.16, 'sine', 0.22);
+  },
+
+  /** Průlet duhou – jiskřivý běh nahoru. */
+  rainbow() {
+    const n = [523, 659, 784, 1047];
+    n.forEach((f, i) => this._blip(f, f, 0.12, 'triangle', 0.22, i * 0.06));
+  },
+
+  /** Stoupavý proud / větrný poryv – hučení. */
+  whoosh() {
+    this._blip(220, 700, 0.35, 'sawtooth', 0.10);
+  },
+
+  /** Milník – malá fanfára. */
+  fanfare() {
+    const n = [523, 659, 784, 1047, 1319];
+    n.forEach((f, i) => this._blip(f, f, 0.16, 'triangle', 0.3, i * 0.09));
   },
 };

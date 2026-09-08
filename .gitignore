@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Zbytek po přejmenování projektu (obsahuje jen starý .git) – nenahrávat
+remove/
+
+# Systémové smetí
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editory
+.vscode/
+*.swp

@@ -123,5 +123,9 @@ def static_files(path):
 if __name__ == "__main__":
     log.info("Frontend: %s", FRONTEND_DIR)
     log.info("HW detekce GPIO: %s", "ANO" if ride.hardware else "NE (simulace)")
+    # Port jde přepsat proměnnou PORT (např. když je 5000 obsazený).
+    # Bez ní zůstává 5000, takže na Pi i ve start skriptech se nic nemění.
+    port = int(os.environ.get("PORT", 5000))
+    log.info("Poslouchám na portu %s", port)
     # threaded=True je nutné pro souběžné SSE streamy
-    app.run(host="0.0.0.0", port=5000, threaded=True)
+    app.run(host="0.0.0.0", port=port, threaded=True)

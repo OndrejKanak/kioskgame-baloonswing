@@ -16,7 +16,7 @@
     <!-- ATRAKTOR (klidová obrazovka) -->
     <section id="screen-attract" class="screen">
       <div class="attract-inner">
-        <h1 class="title">Aninka<br />prdinka</h1>
+        <h1 class="title">Balónková <br />Výprava</h1>
         <div class="balloon-emblem floaty"></div>
         <p class="cta">Vlož minci<br />nebo přilož kartu</p>
         <p class="hint pulse">a leť k oblakům!</p>
@@ -29,12 +29,12 @@
       <h1 class="menu-title">Vyber si hru</h1>
       <div class="menu-grid">
         <button class="game-card" data-game="balloon">
-          <div class="card-emblem balloon-emblem"></div>
-          <span class="card-label">Balónková výprava</span>
+          <canvas class="card-preview up" data-preview="up"></canvas>
+          <span class="card-label" data-label="balloon">Balónková výprava</span>
         </button>
         <button class="game-card" data-game="game2">
-          <div class="card-emblem balloon-emblem flappy-tint"></div>
-          <span class="card-label">Balónkový let</span>
+          <canvas class="card-preview right" data-preview="right"></canvas>
+          <span class="card-label" data-label="game2">Balónkový let</span>
         </button>
       </div>
       <img class="brand-logo small" src="assets/International_logo_red.png" alt="International player" />
@@ -73,8 +73,11 @@
   <script src="js/config.js"></script>
   <script src="js/assets.js"></script>
   <script src="js/sound.js"></script>
+  <script src="js/music.js"></script>
   <script src="js/gfx.js"></script>
+  <script src="js/menu.js"></script>
   <script src="js/balloon.js"></script>
+  <script src="js/fun.js"></script>
   <script src="js/flappy.js"></script>
   <script src="js/main.js"></script>
 </body>

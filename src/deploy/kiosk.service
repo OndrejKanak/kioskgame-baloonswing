@@ -3,7 +3,7 @@
 #
 # Instalace (jako uživatel 'pi' nebo tvůj účet s desktopem):
 #   mkdir -p ~/.config/systemd/user
-#   cp deploy/kiosk.service ~/.config/systemd/user/
+#   cp src/deploy/kiosk.service ~/.config/systemd/user/
 #   # uprav ExecStart cestu níže, ať sedí na umístění projektu
 #   systemctl --user daemon-reload
 #   systemctl --user enable --now kiosk.service
@@ -21,7 +21,7 @@ PartOf=graphical-session.target
 [Service]
 Type=simple
 # UPRAV cestu podle umístění projektu:
-ExecStart=/home/pi/houpadlo-kiosk/deploy/start-kiosk.sh
+ExecStart=/home/pi/kioskgame-baloonswing/src/deploy/start-kiosk.sh
 Restart=on-failure
 RestartSec=3
 

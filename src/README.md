@@ -11,27 +11,59 @@ signál simulovat bez hardwaru.
 ## Co to umí teď
 
 - **Atraktor** (klidová obrazovka): výzva „Vlož minci / přilož kartu".
-- **Menu** se dvěma hrami: *Balónková výprava* + *Balónkový let*.
-- **Hra 1 – Balónková výprava:** balon stoupá sám do oblak a sleduje prst
+- **Menu** se dvěma hrami: *Vzhůru!* + *Vpřed!*. Hráči jsou předškoláci,
+  kteří většinou neumí číst, takže rozdíl mezi hrami sděluje hlavně **živý
+  náhled** v každé kartě – naznačuje směr třemi způsoby najednou: tvarem
+  (na výšku vs. na šířku), pohybem mraků a poskakujícími šipkami.
+  Názvy a jejich skrytí: `config.js` → `menu.names` / `menu.showNames`.
+- **Hra 1 – Vzhůru!** (stoupání): balon stoupá sám do oblak a sleduje prst
   **ve všech směrech** (do stran i nahoru/dolů), naklání se po směru letu.
   Mrak je **překážka**: balon od něj odskočí dolů, a dokud mu hráč neuhne,
   svět stojí na místě (metry nepřibývají). Vedle každého mraku je zaručená
   průletná mezera, takže hra nikdy neuvízne. Mezi mraky se sbírají
   **hvězdičky** (počítadlo vpravo nahoře). Ťuknutí přímo na balon = balon se
   vesele zavrtí. Nedá se prohrát, nic se neukládá.
-- **Hra 2 – Balónkový let:** balon letí doprava a gravitace ho táhne dolů;
+- **Hra 2 – Vpřed!** (let do strany): balon letí doprava a gravitace ho táhne dolů;
   ťuknutí kamkoliv = poskok nahoru. Proletává mezerami mezi sloupy mraků,
   v každé mezeře je hvězdička. Náraz nezabíjí – **balon se odrazí dozadu
   a vrací se, překážka zůstane stát na místě** (svět stojí, metry
   nepřibývají), dokud hráč balon nevyrovná do mezery a překážku nepřekoná.
   Nedá se prohrát. Ladění: `config.js` → `flappy` (`knockback`,
   `knockReturn`, `knockMax`).
+- **Zábavné prvky v obou hrách** (ladění: `config.js` → `fun`):
+  - 🕊️ **Racek** – přiletí, přistane balonu na kopuli, chvíli se veze
+    a odletí (občas místo přistání udělá vývrtku). Ťuknutí na něj = vyplaší
+    se a odletí dřív. Při odletu **upustí pírko** = bonusová hvězdička.
+  - ☁️ **Mraky mají obličeje** – ospalá zavřená očka; po žuchnutí se leknou
+    (vykulí oči, udělají „ó") a pak se usmějí.
+  - 🫧 **Mýdlové bubliny** – stoupají vzhůru, praskají po ťuknutí i po
+    doteku balonem.
+  - 🌈 **Duha** (jen hra *Vzhůru!*) – klene se od rohu k rohu přes
+    celou obrazovku; průlet obloukem obarví stopu za balonem na několik sekund.
+  - 🎉 **Milníky** – při 5/10/20/35/50 hvězdičkách konfety, fanfára a cedule.
+- **Jen hra 1:** výškové vrstvy (nad 150 m obloha tmavne do soumraku
+  a rozsvítí se hvězdy), cedule každých 100 m, **stoupavý proud** (třpytivý
+  sloup, který balon vystřelí nahoru) a **plaché mraky**, které před
+  blížícím se balonem uhnou stranou.
+- **Jen hra 2:** **obruče** mezi sloupy (průlet středem = bonusová
+  hvězdička), **racek posedávající na sloupu**, který se při přiblížení
+  vyplaší, a **větrný poryv**, který balon prožene úsekem rychleji.
 - **Efekty:** slunce se září, parallax vzdálených mraků, plastické mraky
   (stín + odlesk), obláčková stopa za balonem, „+1" při sebrání hvězdičky,
   třpyt hvězdiček, ptáčci, větrné šmouhy, mlha u spodního okraje, částice,
   „nafouknutí" mraku při odrazu. Vše jde vypnout v `config.js` (`effects`).
-- **Zvuky:** procedurální WebAudio (odraz, hvězdička, ťuknutí) – žádné
-  soubory, funguje offline. Vypnutí: `config.js` → `sound.enabled`.
+- **Zvuky:** procedurální WebAudio (odraz, hvězdička, ťuknutí, racek,
+  prasknutí bubliny, pírko, duha, hučení proudu, fanfára) – žádné soubory,
+  funguje offline. Vypnutí: `config.js` → `sound.enabled`.
+- **Hudba na pozadí:** tři skladby, každá se **skládá proceduálně v kódu**
+  ([`music.js`](frontend/js/music.js)), takže je **bez autorských práv**,
+  nepotřebuje žádné soubory a funguje offline:
+  - `lobby` – klidný valčík 3/4 (atraktor, menu, obrazovka „Ahoj")
+  - `game1` – snivá, vzdušná (Balónková výprava)
+  - `game2` – hopsavá s poskakujícím basem (Balónkový let)
+
+  Skladba se přepíná automaticky podle obrazovky a plynule se prolne.
+  Hlasitost/vypnutí: `config.js` → `music.volume` / `music.enabled`.
 - **Konec jízdy:** obrazovka „Ahoj" ukáže nasbírané hvězdičky a nalétané
   metry (jen za tuto jízdu) → zpět na atraktor.
 
@@ -40,7 +72,7 @@ Tok: `ATRAKTOR → (jízda začala) → MENU → HRA → (jízda skončila) → 
 ## Struktura
 
 ```
-houpadlo-kiosk/
+src/
 ├── backend/
 │   ├── app.py            # Flask server + SSE (události jízdy) + /dev/trigger
 │   ├── gpio_listener.py  # detekce signálu jízdy (gpiozero), na PC simulace
@@ -52,7 +84,10 @@ houpadlo-kiosk/
 │   │   ├── config.js     # ← TADY se ladí chování a cesty ke grafice
 │   │   ├── assets.js     # nahrávání obrázků
 │   │   ├── sound.js      # procedurální zvuky (WebAudio)
-│   │   ├── gfx.js        # sdílené kreslení (mraky, hvězdy, HUD, částice)
+│   │   ├── music.js      # procedurální hudba (3 skladby, bez copyrightu)
+│   │   ├── gfx.js        # sdílené kreslení (mraky, hvězdy, HUD, částice…)
+│   │   ├── menu.js       # živé náhledy her v kartách menu (směr letu)
+│   │   ├── fun.js        # sdílené zábavné prvky (racek, bubliny, duha…)
 │   │   ├── balloon.js    # hra 1: Balónková výprava (stoupání, překážky)
 │   │   ├── flappy.js     # hra 2: Balónkový let (ťukni = poskoč)
 │   │   └── main.js       # stavový stroj obrazovek + příjem signálu jízdy
@@ -68,7 +103,7 @@ houpadlo-kiosk/
 ## Spuštění na vývojovém PC (Windows / bez houpadla)
 
 ```powershell
-cd houpadlo-kiosk\backend
+cd src\backend
 pip install -r requirements.txt   # nainstaluje jen Flask (GPIO se na PC vynechá)
 python app.py
 ```
@@ -86,7 +121,7 @@ V DEV režimu jde balon řídit i **šipkami ←/→**. DEV lištu vypneš nasta
 ## Spuštění na Raspberry Pi 5
 
 ```bash
-cd houpadlo-kiosk/backend
+cd src/backend
 pip install -r requirements.txt        # na Pi doinstaluje gpiozero + lgpio
 chmod +x ../deploy/start-kiosk.sh
 ../deploy/start-kiosk.sh
@@ -120,10 +155,18 @@ Autostart po bootu: viz komentář v [`deploy/kiosk.service`](deploy/kiosk.servi
 | Velikost balonu | `balloon.displayWidth` |
 | Rozsah pohybu nahoru/dolů | `balloon.topLimit` / `bottomLimit` |
 | Svižnost řízení (sledování prstu) | `balloon.followSpeed` |
-| Rychlost animace balonu | `balloon.fps` |
+| Rychlost animace balonu | `balloon.fps` (5 = pomalé houpání) |
+| Plynulost animace balonu | `balloon.register`, `smoothScaling`, `crossFade` |
+| Vypnout sprite animaci úplně | `balloon.frameCount: 1` (nejhladší) |
 | Hvězdičky (zap/vyp, četnost, velikost) | `stars.enabled` / `chance` / `radius` |
+| Racek, bubliny, duha, milníky | `fun.*` (každý prvek zvlášť) |
+| Stoupavý proud, plaché mraky (hra 1) | `world.thermal*`, `world.shy*` |
+| Obruče, racek na sloupu, poryv (hra 2) | `flappy.hoopChance`, `perchChance`, `gust*` |
 | Náklon balonu, parallax, ptáčci, šmouhy | `effects.*` |
+| Názvy her v menu / skrytí názvů | `menu.names` / `menu.showNames` |
 | Zvuk (zap/vyp, hlasitost) | `sound.enabled` / `volume` |
+| Hudba (zap/vyp, hlasitost) | `music.enabled` / `music.volume` |
+| Melodie skladeb | `music.js` → `Music.tracks` |
 | Délka obrazovky „Ahoj" | `timing.goodbyeMs` |
 | DEV nástroje on/off | `debug` |
 
