@@ -180,34 +180,59 @@ const GFX = {
   //  pak vykreslila jako prázdné rámečky. Zjistíme to jednou při startu
   //  a když chybí, texty se vypíšou bez nich.
   _emojiOK: null,
+
+  /** Je k dispozici emoji font?
+   *  ui.emoji v configu: 'auto' (zjistit sám) | 'on' (vynutit) | 'off' (nikdy). */
   emojiSupported() {
-    if (this._emojiOK !== null) return this._emojiOK;
-    try {
-      const c = document.createElement('canvas');
-      c.width = 32;
-      c.height = 32;
-      const g = c.getContext('2d', { willReadFrequently: true });
-      g.textBaseline = 'top';
-      g.font = '28px sans-serif';
-      g.fillText('\u{1F388}', 0, 0); // balonek
-      const d = g.getImageData(0, 0, 32, 32).data;
-      // barevný emoji font kreslí BAREVNĚ; chybějící glyf je jednobarevný rámeček
-      let barevne = false;
-      for (let i = 0; i < d.length; i += 4) {
-        if (d[i + 3] < 40) continue;
-        const r = d[i];
-        const gg = d[i + 1];
-        const b = d[i + 2];
-        if (Math.max(Math.abs(r - gg), Math.abs(gg - b), Math.abs(r - b)) > 30) {
-          barevne = true;
-          break;
-        }
-      }
-      this._emojiOK = barevne;
-    } catch (e) {
-      this._emojiOK = false;
-    }
+    const rezim = (CONFIG.ui && CONFIG.ui.emoji) || 'auto';
+    if (rezim === 'on') return true;
+    if (rezim === 'off') return false;
+    if (this._emojiOK === null) this._emojiOK = this._detectEmoji();
     return this._emojiOK;
+  },
+
+  /** Vykreslí emoji a znak, který v žádném fontu není, a porovná výsledek.
+   *  Když jsou stejné, emoji se kreslí jako prázdný rámeček = font chybí.
+   *  (Dřív se testovala jen barevnost, což neprošlo u jednobarevných
+   *  emoji fontů.) */
+  _detectEmoji() {
+    try {
+      const kresli = (znak) => {
+        const c = document.createElement('canvas');
+        c.width = 24;
+        c.height = 24;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.textBaseline = 'top';
+        g.font = '20px sans-serif';
+        g.fillText(znak, 0, 0);
+        return g.getImageData(0, 0, 24, 24).data;
+      };
+      const emoji = kresli('\u{1F388}');   // balonek
+      const chybi = kresli('\u{FFFF}');    // zaručeně neexistující znak
+      let inkoust = 0;
+      let rozdil = 0;
+      for (let i = 3; i < emoji.length; i += 4) if (emoji[i] > 30) inkoust++;
+      for (let i = 0; i < emoji.length; i++) {
+        if (Math.abs(emoji[i] - chybi[i]) > 24) rozdil++;
+      }
+      return inkoust > 8 && rozdil > 40;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /** Fonty se načítají asynchronně – při startu nemusí být emoji font ještě
+   *  k dispozici a detekce by ho zbytečně odepsala. Tohle ji po dokončení
+   *  načítání zopakuje a při změně zavolá `cb`. */
+  recheckEmoji(cb) {
+    if (!document.fonts || !document.fonts.ready) return;
+    document.fonts.ready
+      .then(() => {
+        const pred = this._emojiOK;
+        this._emojiOK = this._detectEmoji();
+        if (cb && pred !== this._emojiOK) cb(this._emojiOK);
+      })
+      .catch(() => {});
   },
 
   /** Text pro zobrazení: na systému bez emoji fontu z něj emoji vyhodí. */

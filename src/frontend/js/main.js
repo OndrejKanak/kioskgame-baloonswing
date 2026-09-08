@@ -58,9 +58,9 @@ const App = {
 
     // Bez emoji fontu (typicky čisté Raspberry Pi OS) by se mávající ruka
     // na obrazovce „Ahoj" vykreslila jako prázdný rámeček – radši ji skryjeme.
-    if (!GFX.emojiSupported()) {
-      document.querySelectorAll('.wave').forEach((el) => { el.hidden = true; });
-    }
+    this._applyEmojiUI();
+    // Fonty se načítají asynchronně, takže po jejich načtení ověřit znovu.
+    GFX.recheckEmoji(() => this._applyEmojiUI());
 
     // zvuk smí prohlížeč pustit až po dotyku -> odemknout při každém ťuknutí
     // (na kiosku to řeší Chromium flag --autoplay-policy=no-user-gesture-required)
@@ -78,6 +78,14 @@ const App = {
     this._setupDev();
 
     this.show('attract');
+  },
+
+  /** Skryje prvky, které bez emoji fontu nedávají smysl (mávající ruka). */
+  _applyEmojiUI() {
+    const ok = GFX.emojiSupported();
+    document.querySelectorAll('.wave').forEach((el) => {
+      el.hidden = !ok;
+    });
   },
 
   /** Názvy her v menu bere z configu; showNames: false je úplně skryje. */

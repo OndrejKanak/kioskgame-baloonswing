@@ -186,6 +186,18 @@ const CONFIG = {
     showFps: true,
   },
 
+  // --- Zobrazení textů ----------------------------------------------------
+  ui: {
+    // 'auto' = hra si sama zjistí, jestli systém má emoji font (a když ne,
+    //          vypíše texty bez emoji místo prázdných rámečků)
+    // 'on'   = vždy používat emoji (když víš, že font je nainstalovaný)
+    // 'off'  = nikdy nepoužívat emoji
+    //
+    // Na Raspberry Pi doinstaluj font:  sudo apt install -y fonts-noto-color-emoji
+    // a pak restartuj Chromium (font se načítá při startu prohlížeče).
+    emoji: 'auto',
+  },
+
   // --- Menu výběru hry ----------------------------------------------------
   //  Hráči jsou předškoláci, kteří většinou neumí číst – rozdíl mezi hrami
   //  sděluje hlavně živý náhled v kartě (tvar + pohyb + šipky).
