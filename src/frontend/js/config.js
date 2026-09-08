@@ -135,7 +135,7 @@ const CONFIG = {
     sun: true,          // slunce se září v rohu oblohy
     trail: true,        // obláčková stopa za balonem
     fog: true,          // jemná mlha u spodního okraje
-    logoInGame: true,   // poloprůhledné logo dole ve hře (watermark)
+    logoInGame: false,  // logo uvnitř her (watermark) – vypnuto, hry ho nemají
     altitudeLayers: true, // hra 1: obloha se mění s výškou (soumrak + hvězdy)
   },
 

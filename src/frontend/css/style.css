@@ -226,28 +226,16 @@ body {
   position: absolute;
   left: 50%;
   bottom: 7cqh;
-  transform: translateX(-50%);
+  /* Logo je bez podložky – splývá s oblohou.
+     --logo-shift = mírné posunutí doprava od středu (0 = přesně na střed). */
+  --logo-shift: 5cqw;
+  transform: translateX(calc(-50% + var(--logo-shift)));
   width: 46cqw;
-  background: rgba(255,255,255,.88);
-  padding: 1.4cqh 4cqw;
-  border-radius: 5cqw;
-  box-shadow: 0 0.8cqw 2.5cqw rgba(0,0,0,.18);
   pointer-events: none;   /* nesmí blokovat dotyky */
 }
-/* Na úvodní obrazovce logo bez bílé podložky – splyne s oblohou.
-   V menu a na obrazovce „Ahoj" podložka zůstává (leží tam na pestřejším
-   pozadí a bez ní by se ztrácelo). */
-#screen-attract .brand-logo {
-  background: none;
-  padding: 0;
-  box-shadow: none;
-  border-radius: 0;
-}
-
 .brand-logo.small {
   width: 34cqw;
   bottom: 3.2cqh;
-  padding: 1cqh 3cqw;
 }
 
 /* ===================== DEV lišta ===================== */
