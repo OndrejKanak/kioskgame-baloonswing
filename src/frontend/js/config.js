@@ -173,7 +173,7 @@ const CONFIG = {
     // Vnitřní rozlišení canvasu vůči obrazovce. 1 = nativní FHD,
     // 0.75 = o 44 % míň pixelů, 0.6 = o 64 % míň. Canvas se pak roztáhne
     // přes CSS, takže hra vypadá stejně velká, jen o něco měkčí.
-    renderScale: 0.75,
+    renderScale: 0.6,
     // Mraky se předrenderují do několika hotových obrázků a pak už se jen
     // kopírují. Bez toho se každý mrak skládá z ~24 velkých elips – na Pi
     // je to hlavní žrout výkonu.

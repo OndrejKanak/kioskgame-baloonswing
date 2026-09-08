@@ -204,6 +204,9 @@ class FlappyGame {
       w: w * (0.95 + Math.random() * 0.4),
       h: 230 * S * (0.9 + Math.random() * 0.3),
       puffs: GFX.makePuffs(),
+      // varianta mraku se losuje JEN TEĎ; při kreslení se jen předává dál,
+      // jinak by segment měnil tvar každý snímek
+      tex: GFX.pickCloudTex(),
     };
   }
 
@@ -635,6 +638,7 @@ class FlappyGame {
             alpha: 1,
             hasFace: seg.hasFace,
             faceT: seg.faceT || 0,
+            _tex: seg.tex, // stálá varianta mraku (viz _makeSeg)
           },
           img
         );

@@ -135,6 +135,15 @@ const GFX = {
    *  žrout výkonu. Vykreslíme je proto JEDNOU a pak už jen kopírujeme,
    *  což je jedno drawImage místo stovek elips za snímek. */
   _cloudPool: null,
+
+  /** Vybere náhodnou variantu mraku. Volej JEDNOU při vzniku mraku a index
+   *  si ulož – kdyby se losovalo při každém kreslení, mrak by měnil tvar
+   *  každý snímek a "třepal se". */
+  pickCloudTex() {
+    const pool = this._cloudPool || this._buildCloudPool();
+    return (Math.random() * pool.length) | 0;
+  },
+
   _buildCloudPool() {
     const N = (CONFIG.perf && CONFIG.perf.cloudPoolSize) || 6;
     const W = 512;
@@ -164,6 +173,50 @@ const GFX = {
     }
     this._cloudPool = pool;
     return pool;
+  },
+
+  // ---- emoji --------------------------------------------------------------
+  //  Čisté Raspberry Pi OS nemusí mít nainstalovaný emoji font. Emoji by se
+  //  pak vykreslila jako prázdné rámečky. Zjistíme to jednou při startu
+  //  a když chybí, texty se vypíšou bez nich.
+  _emojiOK: null,
+  emojiSupported() {
+    if (this._emojiOK !== null) return this._emojiOK;
+    try {
+      const c = document.createElement('canvas');
+      c.width = 32;
+      c.height = 32;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.textBaseline = 'top';
+      g.font = '28px sans-serif';
+      g.fillText('\u{1F388}', 0, 0); // balonek
+      const d = g.getImageData(0, 0, 32, 32).data;
+      // barevný emoji font kreslí BAREVNĚ; chybějící glyf je jednobarevný rámeček
+      let barevne = false;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 40) continue;
+        const r = d[i];
+        const gg = d[i + 1];
+        const b = d[i + 2];
+        if (Math.max(Math.abs(r - gg), Math.abs(gg - b), Math.abs(r - b)) > 30) {
+          barevne = true;
+          break;
+        }
+      }
+      this._emojiOK = barevne;
+    } catch (e) {
+      this._emojiOK = false;
+    }
+    return this._emojiOK;
+  },
+
+  /** Text pro zobrazení: na systému bez emoji fontu z něj emoji vyhodí. */
+  txt(s) {
+    if (this.emojiSupported()) return String(s);
+    return String(s)
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
   },
 
   /** Měřič FPS pro DEV lištu – ať se výkon na Pi dá změřit, ne hádat. */
@@ -891,7 +944,8 @@ const GFX = {
     ctx.font = `800 ${Math.round(72 * s)}px "Baloo 2", "Segoe UI", system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const tw = ctx.measureText(b.text).width;
+    const text = this.txt(b.text); // bez emoji, když je systém nemá
+    const tw = ctx.measureText(text).width;
     const pw = tw + 90 * s;
     const ph = 130 * s;
     const cx = W / 2;
@@ -911,7 +965,7 @@ const GFX = {
     ctx.lineWidth = 9 * s;
     if (ctx.roundRect) ctx.stroke();
     ctx.fillStyle = '#0b2b56';
-    ctx.fillText(b.text, 0, 4 * s);
+    ctx.fillText(text, 0, 4 * s);
     ctx.restore();
   },
 

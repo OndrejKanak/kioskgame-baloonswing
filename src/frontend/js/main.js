@@ -56,6 +56,12 @@ const App = {
     );
     this._applyMenuNames();
 
+    // Bez emoji fontu (typicky čisté Raspberry Pi OS) by se mávající ruka
+    // na obrazovce „Ahoj" vykreslila jako prázdný rámeček – radši ji skryjeme.
+    if (!GFX.emojiSupported()) {
+      document.querySelectorAll('.wave').forEach((el) => { el.hidden = true; });
+    }
+
     // zvuk smí prohlížeč pustit až po dotyku -> odemknout při každém ťuknutí
     // (na kiosku to řeší Chromium flag --autoplay-policy=no-user-gesture-required)
     window.addEventListener(
@@ -203,7 +209,7 @@ const App = {
     const parts = [];
     if (stars > 0) parts.push(`⭐ ${stars} ${this._pluralCz(stars, 'hvězdička', 'hvězdičky', 'hvězdiček')}`);
     parts.push(`🎈 výška ${meters} ${this._pluralCz(meters, 'metr', 'metry', 'metrů')}`);
-    el.textContent = parts.join('  ·  ');
+    el.textContent = GFX.txt(parts.join('  ·  '));
   },
 
   _pluralCz(n, one, few, many) {

@@ -129,6 +129,16 @@ chmod +x ../deploy/start-kiosk.sh
 
 Autostart po bootu: viz komentář v [`deploy/kiosk.service`](deploy/kiosk.service).
 
+**Emoji font:** čisté Raspberry Pi OS ho nemusí mít a emoji by se
+vykreslila jako prázdné rámečky. Doinstaluj ho:
+
+```bash
+sudo apt install -y fonts-noto-color-emoji
+```
+
+Hra si sama zjistí, jestli emoji font existuje, a když ne, texty vypíše bez
+nich (místo rámečků). S fontem to ale vypadá líp.
+
 **Připomínky k hardwaru (z předávacího dokumentu):**
 - Signál jízdy = motor-signál řídicí desky přes **optočlen → GPIO 17**
   (active-low, pull-up). Číslo pinu se mění v `app.py` (`RideSignal(pin=17, …)`).
