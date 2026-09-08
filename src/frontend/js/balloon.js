@@ -188,12 +188,17 @@ class BalloonGame {
 
   _resize() {
     const stage = this.canvas.parentElement;
-    const w = Math.max(1, Math.round(stage.clientWidth));
-    const h = Math.max(1, Math.round(stage.clientHeight));
+    // renderScale < 1 = kreslíme na menší plátno a CSS ho roztáhne přes celou
+    // obrazovku. Hra vypadá stejně velká, jen o něco měkčí – a ušetří to
+    // spoustu pixelů (na Pi největší jediná úspora).
+    const rs = (CONFIG.perf && CONFIG.perf.renderScale) || 1;
+    const w = Math.max(1, Math.round(stage.clientWidth * rs));
+    const h = Math.max(1, Math.round(stage.clientHeight * rs));
     if (this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w;
       this.canvas.height = h;
       this._skyCache = null; // překreslit cache pozadí
+      this._altGrad = null;  // gradient soumraku závisí na výšce
     }
     this.W = this.canvas.width;
     this.H = this.canvas.height;
@@ -269,6 +274,9 @@ class BalloonGame {
   }
 
   _ensureClouds() {
+    // Pojistka: při nulovém/rozbitém rozměru plátna (např. skrytý panel nebo
+    // přechodný stav při rotaci displeje) by smyčka spawnovala mraky donekonečna.
+    if (this.W < 10 || this.clouds.length > 40) return;
     const S = this.s;
     let minY = Infinity;
     for (const c of this.clouds) if (c.y < minY) minY = c.y;
@@ -288,6 +296,7 @@ class BalloonGame {
 
   _ensureFarClouds() {
     if (!CONFIG.effects.parallax) return;
+    if (this.W < 10 || this.farClouds.length > 40) return; // viz _ensureClouds
     const S = this.s;
     let minY = Infinity;
     for (const c of this.farClouds) if (c.y < minY) minY = c.y;
@@ -660,12 +669,19 @@ class BalloonGame {
     if (m < 150) return;
     const k = Math.min(1, (m - 150) / 260); // 0..1 přechod do soumraku
     ctx.save();
-    const grad = ctx.createLinearGradient(0, 0, 0, this.H);
-    grad.addColorStop(0, `rgba(18, 22, 62, ${0.72 * k})`);
-    grad.addColorStop(0.6, `rgba(50, 40, 95, ${0.5 * k})`);
-    grad.addColorStop(1, `rgba(120, 80, 110, ${0.2 * k})`);
-    ctx.fillStyle = grad;
+    // gradient se vyrobí jen jednou; sílu soumraku řídí globalAlpha,
+    // takže se nemusí každý snímek skládat znovu
+    if (!this._altGrad) {
+      const grad = ctx.createLinearGradient(0, 0, 0, this.H);
+      grad.addColorStop(0, 'rgba(18, 22, 62, 0.72)');
+      grad.addColorStop(0.6, 'rgba(50, 40, 95, 0.5)');
+      grad.addColorStop(1, 'rgba(120, 80, 110, 0.2)');
+      this._altGrad = grad;
+    }
+    ctx.globalAlpha = k;
+    ctx.fillStyle = this._altGrad;
     ctx.fillRect(0, 0, this.W, this.H);
+    ctx.globalAlpha = 1;
     // blikající hvězdy
     if (k > 0.25) {
       ctx.fillStyle = '#ffffff';
@@ -681,17 +697,12 @@ class BalloonGame {
   }
 
   _drawSky(ctx) {
-    // pozadí (obloha + slunce) se předkreslí jednou do cache
-    // (velká úspora výkonu na Pi)
-    if (!this._skyCache) {
-      const c = document.createElement('canvas');
-      c.width = this.W;
-      c.height = this.H;
-      GFX.paintSky(c.getContext('2d'), this.W, this.H, Assets.get('sky'));
-      this._skyCache = c;
-    }
-    ctx.drawImage(this._skyCache, 0, 0);
+    // Obloha je CSS pozadím herní sekce (viz style.css) – plátno je průhledné
+    // a stačí ho vyčistit. Dřív se sem každý snímek kopíroval celý obrázek
+    // oblohy, což byla nejdražší část vykreslování.
+    ctx.clearRect(0, 0, this.W, this.H);
   }
+
 
   _drawStreaks(ctx) {
     if (!CONFIG.effects.windStreaks) return;
@@ -793,6 +804,7 @@ class BalloonGame {
     dt = Math.min(dt, 0.05); // ochrana proti skoku (např. po přepnutí karty)
     this._update(dt);
     this._render();
+    GFX.fpsTick(dt);
     this._raf = requestAnimationFrame((tt) => this._loop(tt));
   }
 }

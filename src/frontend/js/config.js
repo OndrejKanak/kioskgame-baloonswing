@@ -163,6 +163,29 @@ const CONFIG = {
     volume: 0.30,  // 0..1 – schválně tišší než efekty
   },
 
+  // --- Výkon (hlavně pro Raspberry Pi) ------------------------------------
+  //  Hry kreslí celou obrazovku (1080x1920 = 2 mil. pixelů) každý snímek.
+  //  Když se na Pi sekají, ubírej postupně:
+  //    1) renderScale na 0.75 nebo 0.6  – největší úspora (kreslí se míň pixelů)
+  //    2) effects.* vypni, co nepotřebuješ (parallax, windStreaks, trail…)
+  //    3) fun.* vypni některé prvky (bubliny, racek…)
+  perf: {
+    // Vnitřní rozlišení canvasu vůči obrazovce. 1 = nativní FHD,
+    // 0.75 = o 44 % míň pixelů, 0.6 = o 64 % míň. Canvas se pak roztáhne
+    // přes CSS, takže hra vypadá stejně velká, jen o něco měkčí.
+    renderScale: 0.75,
+    // Mraky se předrenderují do několika hotových obrázků a pak už se jen
+    // kopírují. Bez toho se každý mrak skládá z ~24 velkých elips – na Pi
+    // je to hlavní žrout výkonu.
+    cloudPool: true,
+    cloudPoolSize: 6,   // kolik variant mraku se předrenderuje
+    // Kvalita vyhlazování při zmenšování spritu balonu:
+    // 'low' | 'medium' | 'high'. Na Pi stačí 'medium'.
+    smoothQuality: 'medium',
+    // Zobrazit měřič FPS v DEV liště (jen když debug: true).
+    showFps: true,
+  },
+
   // --- Menu výběru hry ----------------------------------------------------
   //  Hráči jsou předškoláci, kteří většinou neumí číst – rozdíl mezi hrami
   //  sděluje hlavně živý náhled v kartě (tvar + pohyb + šipky).

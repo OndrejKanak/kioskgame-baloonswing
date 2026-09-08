@@ -46,11 +46,17 @@ body {
 }
 .screen.active { display: flex; }
 
+/* Obloha je pozadím SEKCE, ne kreslená do plátna. Prohlížeč ji vykreslí
+   jednou jako vrstvu; hra pak plátno každý snímek jen vyčistí. Kopírování
+   2 mil. pixelů bylo zdaleka nejdražší položkou vykreslování (~7 ms/snímek). */
 .sky-bg,
 #screen-attract,
 #screen-menu,
-#screen-goodbye {
+#screen-goodbye,
+#screen-balloon,
+#screen-game2 {
   background: url("../assets/sky_bg.png") center / cover no-repeat;
+  background-color: #2b6fd6;
 }
 
 /* --- znak balonu (první snímek ze sprite sheetu 6×2) --- */
@@ -147,7 +153,6 @@ body {
 .flappy-tint { filter: hue-rotate(150deg) saturate(.9); }
 
 /* ===================== HRA: balon ===================== */
-#screen-balloon { background: #1a2a44; }
 #balloon-canvas {
   width: 100%;
   height: 100%;
@@ -173,7 +178,6 @@ body {
 .back-btn.static { position: static; margin-top: 4cqh; }
 
 /* ===================== HRA 2: Balónkový let ===================== */
-#screen-game2 { background: #1a2a44; }
 #flappy-canvas {
   width: 100%;
   height: 100%;

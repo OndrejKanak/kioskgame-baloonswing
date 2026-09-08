@@ -164,11 +164,27 @@ Autostart po bootu: viz komentář v [`deploy/kiosk.service`](deploy/kiosk.servi
 | Obruče, racek na sloupu, poryv (hra 2) | `flappy.hoopChance`, `perchChance`, `gust*` |
 | Náklon balonu, parallax, ptáčci, šmouhy | `effects.*` |
 | Názvy her v menu / skrytí názvů | `menu.names` / `menu.showNames` |
+| **Výkon na Pi (sekání)** | `perf.renderScale` (0.75 / 0.6), viz níže |
 | Zvuk (zap/vyp, hlasitost) | `sound.enabled` / `volume` |
 | Hudba (zap/vyp, hlasitost) | `music.enabled` / `music.volume` |
 | Melodie skladeb | `music.js` → `Music.tracks` |
 | Délka obrazovky „Ahoj" | `timing.goodbyeMs` |
 | DEV nástroje on/off | `debug` |
+
+## Když se hra na Raspberry Pi seká
+
+Hry kreslí celou obrazovku (1080×1920 = 2 miliony pixelů) každý snímek – na Pi
+je to hlavní zátěž. Lobby a menu se nesekají, protože jsou to obyčejné HTML
+obrazovky.
+
+1. Zapni si měřič: `debug: true` (FPS se ukáže v DEV liště dole).
+   Cíl je **stabilních 30+ FPS**, ideálně 60.
+2. Uber rozlišení – zdaleka největší jediná úspora:
+   `perf.renderScale: 0.75` a když nestačí, `0.6`.
+   Hra zůstane stejně velká (plátno se roztáhne), jen bude o něco měkčí.
+   Naměřeno: **0.7 = 1,65× rychlejší vykreslení**.
+3. Teprve pak vypínej efekty v `effects` (`parallax`, `windStreaks`, `trail`,
+   `altitudeLayers`) a prvky v `fun` (`bubbles`, `seagull`).
 
 > Pozn.: rozměry a rychlosti v configu jsou v **referenčních pixelech**
 > obrazovky široké 1080 px – hra si je přepočítá podle skutečné velikosti

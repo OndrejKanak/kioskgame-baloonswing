@@ -137,8 +137,12 @@ class FlappyGame {
 
   _resize() {
     const stage = this.canvas.parentElement;
-    const w = Math.max(1, Math.round(stage.clientWidth));
-    const h = Math.max(1, Math.round(stage.clientHeight));
+    // renderScale < 1 = kreslíme na menší plátno a CSS ho roztáhne přes celou
+    // obrazovku. Hra vypadá stejně velká, jen o něco měkčí – a ušetří to
+    // spoustu pixelů (na Pi největší jediná úspora).
+    const rs = (CONFIG.perf && CONFIG.perf.renderScale) || 1;
+    const w = Math.max(1, Math.round(stage.clientWidth * rs));
+    const h = Math.max(1, Math.round(stage.clientHeight * rs));
     if (this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w;
       this.canvas.height = h;
@@ -204,6 +208,8 @@ class FlappyGame {
   }
 
   _ensureColumns() {
+    // Pojistka proti zacyklení při nulovém/rozbitém rozměru plátna
+    if (this.W < 10 || this.columns.length > 20) return;
     const S = this.s;
     const F = CONFIG.flappy;
     while (this._nextColX < this.W * 2) {
@@ -227,6 +233,7 @@ class FlappyGame {
 
   _ensureFarClouds() {
     if (!CONFIG.effects.parallax) return;
+    if (this.W < 10 || this.farClouds.length > 40) return; // viz _ensureColumns
     const S = this.s;
     let maxX = -Infinity;
     for (const c of this.farClouds) if (c.x > maxX) maxX = c.x;
@@ -589,15 +596,12 @@ class FlappyGame {
   }
 
   _drawSky(ctx) {
-    if (!this._skyCache) {
-      const c = document.createElement('canvas');
-      c.width = this.W;
-      c.height = this.H;
-      GFX.paintSky(c.getContext('2d'), this.W, this.H, Assets.get('sky'));
-      this._skyCache = c;
-    }
-    ctx.drawImage(this._skyCache, 0, 0);
+    // Obloha je CSS pozadím herní sekce (viz style.css) – plátno je průhledné
+    // a stačí ho vyčistit. Dřív se sem každý snímek kopíroval celý obrázek
+    // oblohy, což byla nejdražší část vykreslování.
+    ctx.clearRect(0, 0, this.W, this.H);
   }
+
 
   _drawStreaks(ctx) {
     if (!CONFIG.effects.windStreaks) return;
@@ -708,6 +712,7 @@ class FlappyGame {
     dt = Math.min(dt, 0.05);
     this._update(dt);
     this._render();
+    GFX.fpsTick(dt);
     this._raf = requestAnimationFrame((tt) => this._loop(tt));
   }
 }

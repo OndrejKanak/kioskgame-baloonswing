@@ -77,6 +77,18 @@ const GFX = {
       const h = c.h * scale;
       ctx.drawImage(img, c.x - w / 2, c.y - h / 2, w, h);
       ctx.restore();
+    } else if (CONFIG.perf && CONFIG.perf.cloudPool !== false) {
+      // RYCHLÁ CESTA: hotový obrázek mraku se jen zkopíruje (viz _buildCloudPool)
+      const pool = this._cloudPool || this._buildCloudPool();
+      if (c._tex === undefined) c._tex = (Math.random() * pool.length) | 0;
+      ctx.save();
+      ctx.globalAlpha = c.alpha != null ? c.alpha : 1;
+      // 1.16 / 1.25 = přepočet z plátna poolu tak, aby mrak vyšel stejně
+      // velký jako když se kreslil po elipsách
+      const dw = c.w * scale * 1.162;
+      const dh = c.h * scale * 1.25;
+      ctx.drawImage(pool[c._tex], c.x - dw / 2, c.y - dh / 2, dw, dh);
+      ctx.restore();
     } else {
       ctx.save();
       ctx.translate(c.x, c.y);
@@ -114,6 +126,59 @@ const GFX = {
       ctx.restore();
     }
     if (c.hasFace && CONFIG.fun.cloudFaces) this.drawCloudFace(ctx, c, scale);
+  },
+
+  /** Předrenderuje několik variant mraku do hotových pláten.
+   *
+   *  Proceduální mrak = ~24 velkých průhledných elips ve třech vrstvách.
+   *  Při FHD a několika mracích na obrazovce to je na Raspberry Pi hlavní
+   *  žrout výkonu. Vykreslíme je proto JEDNOU a pak už jen kopírujeme,
+   *  což je jedno drawImage místo stovek elips za snímek. */
+  _cloudPool: null,
+  _buildCloudPool() {
+    const N = (CONFIG.perf && CONFIG.perf.cloudPoolSize) || 6;
+    const W = 512;
+    const H = 340;
+    const cw = W * 0.86;   // rozměry tvaru uvnitř plátna (zbytek je okraj)
+    const ch = H * 0.8;
+    const pool = [];
+    for (let i = 0; i < N; i++) {
+      const cv = document.createElement('canvas');
+      cv.width = W;
+      cv.height = H;
+      const g = cv.getContext('2d');
+      const puffs = this.makePuffs();
+      g.translate(W / 2, H / 2);
+      const layer = (fill, ox, oy, k) => {
+        g.fillStyle = fill;
+        for (const [px, py, pw, ph] of puffs) {
+          g.beginPath();
+          g.ellipse((px + ox) * cw, (py + oy) * ch, (pw * cw * k) / 2, (ph * ch * k) / 2, 0, 0, Math.PI * 2);
+          g.fill();
+        }
+      };
+      layer('rgba(140, 172, 212, 0.60)', 0, 0.12, 1);      // stín dole
+      layer('rgba(247, 250, 255, 0.97)', 0, 0, 1);          // tělo
+      layer('#ffffff', -0.04, -0.09, 0.62);                 // odlesk nahoře
+      pool.push(cv);
+    }
+    this._cloudPool = pool;
+    return pool;
+  },
+
+  /** Měřič FPS pro DEV lištu – ať se výkon na Pi dá změřit, ne hádat. */
+  _fpsN: 0,
+  _fpsT: 0,
+  fpsTick(dt) {
+    if (!CONFIG.debug || !CONFIG.perf || CONFIG.perf.showFps === false) return;
+    this._fpsN++;
+    this._fpsT += dt;
+    if (this._fpsT < 0.5) return;
+    const fps = Math.round(this._fpsN / this._fpsT);
+    this._fpsN = 0;
+    this._fpsT = 0;
+    const el = document.getElementById('dev-fps');
+    if (el) el.textContent = fps + ' FPS';
   },
 
   /** Obličej mraku: ospalá zavřená očka; po žuchnutí se lekne (vykulí oči
@@ -260,7 +325,7 @@ const GFX = {
       // sprite je mnohem vetsi nez balon na obrazovce - bez vyhlazeni
       // by pri pohybu "mzil" (aliasing pri zmensovani)
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingQuality = (CONFIG.perf && CONFIG.perf.smoothQuality) || 'high';
     }
     const spr = Assets.sprite('balloon');
     let drawn = false;
@@ -864,10 +929,15 @@ const GFX = {
 
   /** Jemná bílá mlha u spodního okraje – dodá scéně hloubku. */
   drawFog(ctx, W, H) {
-    const grad = ctx.createLinearGradient(0, H * 0.86, 0, H);
-    grad.addColorStop(0, 'rgba(255,255,255,0)');
-    grad.addColorStop(1, 'rgba(255,255,255,0.38)');
-    ctx.fillStyle = grad;
+    // gradient se vyrábí jen při změně rozměru, ne každý snímek
+    if (!ctx._fogGrad || ctx._fogH !== H) {
+      const grad = ctx.createLinearGradient(0, H * 0.86, 0, H);
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
+      grad.addColorStop(1, 'rgba(255,255,255,0.38)');
+      ctx._fogGrad = grad;
+      ctx._fogH = H;
+    }
+    ctx.fillStyle = ctx._fogGrad;
     ctx.fillRect(0, H * 0.86, W, H * 0.14);
   },
 
