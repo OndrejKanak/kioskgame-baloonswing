@@ -153,6 +153,18 @@ nich (místo rámečků). S fontem to ale vypadá líp.
 - **Pozadí:** přepiš `frontend/assets/sky_bg.png`.
 - **Mraky:** zatím se kreslí proceduálně (bílé obláčky). Až budeš mít PNG mraku,
   dej cestu do `config.assets.cloud` a použije se místo kreslení.
+- **Ikonky místo emoji:** Raspberry Pi OS mívá jen černobílý emoji font.
+  Stačí do `frontend/assets/` nakopírovat PNG s **průhledným pozadím**
+  a použijí se automaticky (každá zvlášť; co chybí, nahradí emoji):
+
+  | Soubor | Co na něm je | Kde se použije | Velikost |
+  |---|---|---|---|
+  | `icon_star.png` | hvězdička | výsledky po jízdě, cedule „Super! 10" | 256×256 |
+  | `icon_balloon.png` | balonek | výsledky, výškové cedule „100 metrů!" | 256×256 |
+  | `icon_rainbow.png` | duha | cedule „Duha!" | 256×256 |
+  | `icon_wave.png` | mávající ruka | velká na obrazovce „Ahoj" | 512×512 |
+
+  Cesty se dají změnit v `config.js` → `assets.icons`.
 
 ## Časté úpravy v `config.js`
 

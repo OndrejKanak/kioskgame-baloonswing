@@ -200,6 +200,10 @@ class BalloonGame {
       this._skyCache = null; // překreslit cache pozadí
       this._altGrad = null;  // gradient soumraku závisí na výšce
     }
+    // Při renderScale < 1 se plátno roztahuje přes celou obrazovku.
+    // 'pixelated' by z textu a mraků udělalo kostky, proto hladké zvětšování;
+    // v nativním rozlišení naopak necháme ostrou pixel-art variantu.
+    this.canvas.style.imageRendering = rs < 1 ? 'auto' : 'pixelated';
     this.W = this.canvas.width;
     this.H = this.canvas.height;
     this.s = this.W / 1080; // měřítko: referenční šířka 1080 px
@@ -507,7 +511,7 @@ class BalloonGame {
 
     // výškové milníky: každých 100 m cedule
     if (this.meters >= this.nextAltitude) {
-      this.fun.showBanner(`${this.nextAltitude} metrů! 🎈`);
+      this.fun.showBanner(`${this.nextAltitude} metrů!`, 'balloon');
       Sound.fanfare();
       this.nextAltitude += 100;
     }

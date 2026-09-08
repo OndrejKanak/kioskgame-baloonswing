@@ -19,8 +19,12 @@ const App = {
   session: { stars: 0, meters: 0 },
 
   async init() {
-    // načti grafiku (chybějící obrázky nevadí)
-    await Assets.load(CONFIG.assets);
+    // načti grafiku (chybějící obrázky nevadí). Ikonky jsou v configu
+    // zanořené, tak je zploštíme na klíče icon_star, icon_balloon, …
+    const { icons, ...obrazky } = CONFIG.assets;
+    const ikony = {};
+    for (const [k, v] of Object.entries(icons || {})) ikony['icon_' + k] = v;
+    await Assets.load({ ...obrazky, ...ikony });
 
     // zarovnej snímky balonu na společný střed a velikost, aby animace
     // neposkakovala (viz Assets.buildSprite)
@@ -82,9 +86,16 @@ const App = {
 
   /** Skryje prvky, které bez emoji fontu nedávají smysl (mávající ruka). */
   _applyEmojiUI() {
+    const img = Assets.get('icon_wave');
     const ok = GFX.emojiSupported();
     document.querySelectorAll('.wave').forEach((el) => {
-      el.hidden = !ok;
+      if (img) {
+        // vlastní obrázek má přednost před emoji
+        if (!el.querySelector('img')) el.innerHTML = `<img src="${img.src}" alt="">`;
+        el.hidden = false;
+      } else {
+        el.hidden = !ok; // bez emoji fontu by byl jen prázdný rámeček
+      }
     });
   },
 
@@ -214,10 +225,19 @@ const App = {
       el.textContent = ''; // hra se nehrála -> žádný řádek
       return;
     }
+    // Ikonka z assets má přednost; když chybí, zkusí se emoji; když nejsou
+    // ani ta, zůstane holý text.
+    const kus = (klic, emoji, popis) => {
+      const img = Assets.get('icon_' + klic);
+      if (img) return `<img class="stat-icon" src="${img.src}" alt=""> ${popis}`;
+      return GFX.txt(`${emoji} ${popis}`);
+    };
     const parts = [];
-    if (stars > 0) parts.push(`⭐ ${stars} ${this._pluralCz(stars, 'hvězdička', 'hvězdičky', 'hvězdiček')}`);
-    parts.push(`🎈 výška ${meters} ${this._pluralCz(meters, 'metr', 'metry', 'metrů')}`);
-    el.textContent = GFX.txt(parts.join('  ·  '));
+    if (stars > 0) {
+      parts.push(kus('star', '⭐', `${stars} ${this._pluralCz(stars, 'hvězdička', 'hvězdičky', 'hvězdiček')}`));
+    }
+    parts.push(kus('balloon', '🎈', `výška ${meters} ${this._pluralCz(meters, 'metr', 'metry', 'metrů')}`));
+    el.innerHTML = parts.join('  ·  ');
   },
 
   _pluralCz(n, one, few, many) {

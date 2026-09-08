@@ -278,7 +278,7 @@ class FunFX {
       rb.used = true;
       this.rainbowTime = CONFIG.fun.rainbowTrailTime;
       GFX.burst(this.h.sparkles, bal.x, bal.y, 16, 'gold', S);
-      this.showBanner('Duha! 🌈');
+      this.showBanner('Duha!', 'rainbow');
       Sound.rainbow();
     }
     // zmizí, až i vrchol oblouku sjede pod spodní okraj
@@ -292,12 +292,13 @@ class FunFX {
     if (this.hitMilestones.has(count)) return;
     this.hitMilestones.add(count);
     GFX.confetti(this.h.sparkles, bx, by, 44, this.h.s);
-    this.showBanner(`Super! ${count} ⭐`);
+    this.showBanner(`Super! ${count}`, 'star');
     Sound.fanfare();
   }
 
-  showBanner(text, dur = 2.2) {
-    this.banner = { text, t: dur, t0: dur };
+  /** icon = klíč ikonky z CONFIG.assets.icons (např. 'star'); nepovinné. */
+  showBanner(text, icon = null, dur = 2.2) {
+    this.banner = { text, icon, t: dur, t0: dur };
   }
 
   // ---- vstup --------------------------------------------------------------

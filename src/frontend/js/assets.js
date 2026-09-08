@@ -21,7 +21,11 @@ const Assets = {
           resolve();
         };
         img.onerror = () => {
-          console.warn('Nepodařilo se načíst obrázek:', src);
+          // Ikonky (icon_*) jsou nepovinné – když chybí, hra použije emoji.
+          // Nehlásíme to jako chybu, ať je konzole na kiosku čitelná.
+          if (!key.startsWith('icon_')) {
+            console.warn('Nepodařilo se načíst obrázek:', src);
+          }
           this.images[key] = null;
           resolve();
         };

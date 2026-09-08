@@ -203,6 +203,18 @@ body {
   text-shadow: none;
 }
 .goodbye-stats:empty { display: none; }
+/* ikonka uvnitř řádku s výsledky (místo emoji) */
+.stat-icon {
+  height: 1.15em;
+  width: auto;
+  vertical-align: -0.22em;
+}
+/* mávající ruka jako vlastní obrázek místo emoji */
+.wave img {
+  width: 30cqw;
+  height: auto;
+  display: block;
+}
 
 /* ===================== firemní logo ===================== */
 .brand-logo {

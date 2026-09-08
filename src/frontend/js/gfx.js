@@ -971,7 +971,12 @@ const GFX = {
     ctx.textBaseline = 'middle';
     const text = this.txt(b.text); // bez emoji, když je systém nemá
     const tw = ctx.measureText(text).width;
-    const pw = tw + 90 * s;
+    // volitelná ikonka z assets (icon_star, icon_balloon, …) vlevo od textu
+    const ikona = b.icon ? Assets.get('icon_' + b.icon) : null;
+    const ih = ikona ? 84 * s : 0;
+    const iw = ikona ? ih * (ikona.width / ikona.height) : 0;
+    const mezera = ikona ? 18 * s : 0;
+    const pw = tw + iw + mezera + 90 * s;
     const ph = 130 * s;
     const cx = W / 2;
     const cy = H * 0.24;
@@ -990,7 +995,16 @@ const GFX = {
     ctx.lineWidth = 9 * s;
     if (ctx.roundRect) ctx.stroke();
     ctx.fillStyle = '#0b2b56';
-    ctx.fillText(text, 0, 4 * s);
+    if (ikona) {
+      // ikonka + text vedle sebe, dohromady vycentrované
+      const celkem = iw + mezera + tw;
+      const x0 = -celkem / 2;
+      ctx.textAlign = 'left';
+      ctx.drawImage(ikona, x0, -ih / 2, iw, ih);
+      ctx.fillText(text, x0 + iw + mezera, 4 * s);
+    } else {
+      ctx.fillText(text, 0, 4 * s);
+    }
     ctx.restore();
   },
 

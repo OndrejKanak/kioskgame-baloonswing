@@ -148,6 +148,10 @@ class FlappyGame {
       this.canvas.height = h;
       this._skyCache = null;
     }
+    // Při renderScale < 1 se plátno roztahuje přes celou obrazovku.
+    // 'pixelated' by z textu a mraků udělalo kostky, proto hladké zvětšování;
+    // v nativním rozlišení naopak necháme ostrou pixel-art variantu.
+    this.canvas.style.imageRendering = rs < 1 ? 'auto' : 'pixelated';
     this.W = this.canvas.width;
     this.H = this.canvas.height;
     this.s = this.W / 1080;
