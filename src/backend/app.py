@@ -44,8 +44,12 @@ def broadcast(event, **data):
 
 
 # --- detekce jízdy: při hraně přepošli událost do frontendu ---
+# Číslo pinu a polaritu jde přenastavit bez zásahu do kódu:
+#   RIDE_PIN=17            (BCM číslování)
+#   RIDE_ACTIVE_HIGH=1     když je jízda signalizovaná 3,3 V místo země
 ride = RideSignal(
-    pin=17,
+    pin=int(os.environ.get("RIDE_PIN", 17)),
+    active_high=os.environ.get("RIDE_ACTIVE_HIGH", "0") == "1",
     on_start=lambda: broadcast("ride_start"),
     on_end=lambda: broadcast("ride_end"),
 )
@@ -104,7 +108,13 @@ def dev_trigger():
 
 @app.route("/health")
 def health():
-    return jsonify(ok=True, hardware=ride.hardware, active=ride.active)
+    return jsonify(
+        ok=True,
+        hardware=ride.hardware,
+        active=ride.active,
+        pin=ride.pin,
+        active_high=ride.active_high,
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -139,9 +139,43 @@ sudo apt install -y fonts-noto-color-emoji
 Hra si sama zjistí, jestli emoji font existuje, a když ne, texty vypíše bez
 nich (místo rámečků). S fontem to ale vypadá líp.
 
+## Zapojení signálu jízdy (naměřeno na konkrétním houpadle)
+
+Signál z řídicí desky houpadla, změřeno multimetrem proti zemi houpadla:
+
+| Stav | Napětí |
+|---|---|
+| Houpadlo stojí | 0,01 V |
+| Houpadlo jede | 7 V, během jízdy postupně klesá na 6,4 V |
+
+Pokles je nejspíš časovač jízdy (vybíjení kondenzátoru) – optočlen spolehlivě
+sepne v celém rozsahu.
+
+**Součástky:** PC817, R1 = 470 Ω / 0,25 W, R2 = 10 kΩ, C1 = 1 µF
+
+```
+   STRANA HOUPADLA               │ izolace │      STRANA PI
+   (vlastní zem, NEPROPOJOVAT!)  │         │      (vlastní zem)
+
+   signál 7 V ──[ R1 470Ω ]──► 1 ─┤▶  ┌─── 4 ─────┬──── GPIO 17 (pin 11)
+                                  │   ┊  │        │
+                                  │  PC817     [R2 10kΩ]   ─┬─ C1 1µF
+                                  │   ┊  │        │         │
+   zem houpadla ────────────► 2 ──┤   └─── 3 ──┐  └─ 3,3 V  │
+                                  │            │   (pin 1)  │
+                                         zem Pi (pin 9) ────┘
+```
+
+PC817: 1 = anoda, 2 = katoda, 3 = emitor, 4 = kolektor (tečka = nožička 1).
+
+- **Země houpadla a Pi se NIKDY nepropojují** – to je celý smysl optočlenu.
+  Zem houpadla jde jen na vstupní stranu (nožička 2).
+- R1 = 470 Ω dá proud LED ~12 mA při 7 V a ~11 mA při 6,4 V (PC817 snese 50 mA).
+- C1 tlumí rušení od motoru. Kdyby detekce kmitala, zvětši ho na 10 µF.
+- Polarita jde přehodit bez zásahu do kódu: `RIDE_ACTIVE_HIGH=1`,
+  číslo pinu `RIDE_PIN=17` (proměnné prostředí).
+
 **Připomínky k hardwaru (z předávacího dokumentu):**
-- Signál jízdy = motor-signál řídicí desky přes **optočlen → GPIO 17**
-  (active-low, pull-up). Číslo pinu se mění v `app.py` (`RideSignal(pin=17, …)`).
 - Na Pi 5 **NEPOUŽÍVAT `RPi.GPIO`** – jen `gpiozero` (`lgpio`).
 - Pokud Wayland zlobí s dotykem, přepni přes `raspi-config` na X11 a v
   `start-kiosk.sh` vynech ozone parametry.
