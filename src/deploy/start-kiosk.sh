@@ -17,13 +17,20 @@ BACKEND_PID=$!
 trap 'kill $BACKEND_PID 2>/dev/null || true' EXIT
 
 # 2) počkej, až backend naběhne (max 20 s)
+#    Port testujeme přímo bashem (/dev/tcp), ne curlem – curl na Pi být nemusí
+#    a když chybí, kontrola by nikdy neuspěla a Chromium by naběhl naprázdno.
+echo "Čekám na backend…"
 for _ in $(seq 1 40); do
-  if curl -sf http://localhost:5000/health >/dev/null 2>&1; then
+  if (exec 3<>/dev/tcp/127.0.0.1/5000) 2>/dev/null; then
     BACKEND_UP=1
+    echo "Backend běží."
     break
   fi
   # když backend mezitím spadl, nemá smysl čekat dál
-  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then break; fi
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    echo "Backend spadl při startu." >&2
+    break
+  fi
   sleep 0.5
 done
 
@@ -44,7 +51,14 @@ command -v unclutter >/dev/null 2>&1 && unclutter -idle 0 &
 
 # 4) Chromium v kiosku (Wayland varianta dle předávacího dokumentu).
 #    Pozn.: binárka může být 'chromium' nebo 'chromium-browser' podle verze OS.
-CHROMIUM="$(command -v chromium-browser || command -v chromium)"
+CHROMIUM="$(command -v chromium-browser || command -v chromium || true)"
+if [ -z "$CHROMIUM" ]; then
+  echo "CHYBA: Chromium nenalezen (zkoušel jsem 'chromium-browser' i 'chromium')." >&2
+  echo "Doinstaluj:  sudo apt install -y chromium-browser" >&2
+  exit 1
+fi
+
+echo "Spouštím Chromium na http://localhost:5000"
 "$CHROMIUM" --kiosk \
   --enable-features=UseOzonePlatform --ozone-platform=wayland \
   --noerrdialogs --disable-infobars --incognito \
