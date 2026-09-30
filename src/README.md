@@ -139,25 +139,48 @@ sudo apt install -y fonts-noto-color-emoji
 Hra si sama zjistí, jestli emoji font existuje, a když ne, texty vypíše bez
 nich (místo rámečků). S fontem to ale vypadá líp.
 
-## Zapojení signálu jízdy (naměřeno na konkrétním houpadle)
+## Zapojení signálu jízdy
 
-Signál z řídicí desky houpadla, změřeno multimetrem proti zemi houpadla:
+> Dřívější údaj 7 V → 6,4 V byl omylem naměřený na **jiné desce**. Neplatí.
+
+Naměřeno na správné desce, multimetrem proti zemi houpadla:
 
 | Stav | Napětí |
 |---|---|
-| Houpadlo stojí | 0,01 V |
-| Houpadlo jede | 7 V, během jízdy postupně klesá na 6,4 V |
+| Houpadlo stojí | **0,01 V** |
+| Houpadlo jede (i s hydraulikou) | **1,67 V** |
 
-Pokles je nejspíš časovač jízdy (vybíjení kondenzátoru) – optočlen spolehlivě
-sepne v celém rozsahu.
+> ⚠️ **Polarita je active-high, ne active-low.** Vlastní deska mezi houpadlem
+> a Pi dává za jízdy na GPIO 17 napětí 3,45 V, ne zem. Proto je ve
+> [`start-kiosk.sh`](deploy/start-kiosk.sh) nastaveno `RIDE_ACTIVE_HIGH=1`.
+> Ověření na Pi: `pinctrl get 17` → v klidu `lo`, po minci `hi`.
 
-**Součástky:** PC817, R1 = 470 Ω / 0,25 W, R2 = 10 kΩ, C1 = 1 µF
+Signál je **stabilní stejnosměrný, PWM ověřeno že tam není**.
+
+Klidových 0,01 V je hluboko pod prahem LED (~1 V), takže v klidu neteče nic
+a stav je jednoznačný.
+
+Nad úbytkem LED (~1,2 V) zbývá jen **0,47 V**, takže R1 musí být řádově menší
+než původních 470 Ω, jinak LED běží na ~1 mA – v oblasti, kde CTR optočlenu
+prudce klesá.
+
+```
+U(R1) = 1,67 − 1,2 = 0,47 V
+I_F   = 0,47 / 100 = 4,7 mA        (R1 = 100 Ω)
+```
+
+**Součástky:** PC817, **R1 = 100 Ω** / 0,25 W, R2 = 10 kΩ, C1 = 1 µF
+
+R1 = 100 Ω je výchozí volba. Kdyby se signál po připojení obvodu propadl pod
+~1,5 V, je zdroj měkký a R1 se zvětší na 150 nebo 220 Ω (proud klesne, ale
+rezerva v CTR je pořád přes desetinásobek). Mít doma 47 / 100 / 150 / 220 Ω
+a vybrat podle měření je nejrychlejší cesta.
 
 ```
    STRANA HOUPADLA               │ izolace │      STRANA PI
    (vlastní zem, NEPROPOJOVAT!)  │         │      (vlastní zem)
 
-   signál 7 V ──[ R1 470Ω ]──► 1 ─┤▶  ┌─── 4 ─────┬──── GPIO 17 (pin 11)
+   signál 1,67V ─[ R1 100Ω ]──► 1 ─┤▶  ┌─── 4 ─────┬──── GPIO 17 (pin 11)
                                   │   ┊  │        │
                                   │  PC817     [R2 10kΩ]   ─┬─ C1 1µF
                                   │   ┊  │        │         │
@@ -170,7 +193,8 @@ PC817: 1 = anoda, 2 = katoda, 3 = emitor, 4 = kolektor (tečka = nožička 1).
 
 - **Země houpadla a Pi se NIKDY nepropojují** – to je celý smysl optočlenu.
   Zem houpadla jde jen na vstupní stranu (nožička 2).
-- R1 = 470 Ω dá proud LED ~12 mA při 7 V a ~11 mA při 6,4 V (PC817 snese 50 mA).
+- R1 = 100 Ω dá proud LED ~5 mA při 1,67 V. PC817 tím zvládne spínat ~10 mA,
+  potřebujeme 0,33 mA – rezerva přes třicetinásobek.
 - C1 tlumí rušení od motoru. Kdyby detekce kmitala, zvětši ho na 10 µF.
 - Polarita jde přehodit bez zásahu do kódu: `RIDE_ACTIVE_HIGH=1`,
   číslo pinu `RIDE_PIN=17` (proměnné prostředí).
@@ -220,7 +244,7 @@ PC817: 1 = anoda, 2 = katoda, 3 = emitor, 4 = kolektor (tečka = nožička 1).
 | Obruče, racek na sloupu, poryv (hra 2) | `flappy.hoopChance`, `perchChance`, `gust*` |
 | Náklon balonu, parallax, ptáčci, šmouhy | `effects.*` |
 | Názvy her v menu / skrytí názvů | `menu.names` / `menu.showNames` |
-| **Výkon na Pi (sekání)** | `perf.renderScale` (0.75 / 0.6), viz níže |
+| **Výkon na Pi (sekání)** | `perf.renderScale` (provozně 0.4), viz níže |
 | Zvuk (zap/vyp, hlasitost) | `sound.enabled` / `volume` |
 | Hudba (zap/vyp, hlasitost) | `music.enabled` / `music.volume` |
 | Melodie skladeb | `music.js` → `Music.tracks` |
@@ -235,10 +259,16 @@ obrazovky.
 
 1. Zapni si měřič: `debug: true` (FPS se ukáže v DEV liště dole).
    Cíl je **stabilních 30+ FPS**, ideálně 60.
-2. Uber rozlišení – zdaleka největší jediná úspora:
-   `perf.renderScale: 0.75` a když nestačí, `0.6`.
+2. Uber rozlišení – zdaleka největší jediná úspora.
    Hra zůstane stejně velká (plátno se roztáhne), jen bude o něco měkčí.
-   Naměřeno: **0.7 = 1,65× rychlejší vykreslení**.
+
+   | `renderScale` | Míň pixelů | Naměřeno |
+   |---|---|---|
+   | 0.7 | o 51 % | 1,65× rychlejší |
+   | **0.4** | **o 84 %** | **3,3× rychlejší** (4,85 ms vs 15,8 ms) |
+
+   **0.4 je ověřená provozní hodnota** na Pi 5 s FHD displejem – na ní hra
+   jede plynule. Níž nechoď, text v HUD začne být rozmazaný.
 3. Teprve pak vypínej efekty v `effects` (`parallax`, `windStreaks`, `trail`,
    `altitudeLayers`) a prvky v `fun` (`bubbles`, `seagull`).
 

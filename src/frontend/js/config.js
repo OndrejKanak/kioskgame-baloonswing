@@ -176,13 +176,18 @@ const CONFIG = {
   // --- Výkon (hlavně pro Raspberry Pi) ------------------------------------
   //  Hry kreslí celou obrazovku (1080x1920 = 2 mil. pixelů) každý snímek.
   //  Když se na Pi sekají, ubírej postupně:
-  //    1) renderScale na 0.75 nebo 0.6  – největší úspora (kreslí se míň pixelů)
+  //    1) renderScale dolů – zdaleka největší úspora (kreslí se míň pixelů)
   //    2) effects.* vypni, co nepotřebuješ (parallax, windStreaks, trail…)
   //    3) fun.* vypni některé prvky (bubliny, racek…)
   perf: {
-    // Vnitřní rozlišení canvasu vůči obrazovce. 1 = nativní FHD,
-    // 0.75 = o 44 % míň pixelů, 0.6 = o 64 % míň. Canvas se pak roztáhne
-    // přes CSS, takže hra vypadá stejně velká, jen o něco měkčí.
+    // Vnitřní rozlišení canvasu vůči obrazovce. 1 = nativní FHD.
+    // Úspora roste s druhou mocninou: 0.75 = o 44 % míň pixelů,
+    // 0.6 = o 64 % míň, 0.4 = o 84 % míň. Canvas se pak roztáhne přes CSS,
+    // takže hra vypadá stejně velká, jen o něco měkčí.
+    //
+    // 0.4 je ověřená provozní hodnota na Raspberry Pi 5 – na ní jede hra
+    // plynule. Naměřeno 4,85 ms/snímek proti 15,8 ms při 1.0, tedy 3,3x
+    // rychleji. Níž už nechoď, text v HUD začne být rozmazaný.
     renderScale: 0.4,
     // Mraky se předrenderují do několika hotových obrázků a pak už se jen
     // kopírují. Bez toho se každý mrak skládá z ~24 velkých elips – na Pi
