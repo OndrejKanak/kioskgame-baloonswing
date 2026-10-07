@@ -12,13 +12,8 @@ const Sound = {
     return !!(CONFIG.sound && CONFIG.sound.enabled);
   },
 
-  /** Zvukový kontext je potřeba i pro hudbu – efekty se dají vypnout zvlášť. */
-  get audioWanted() {
-    return this.enabled || !!(CONFIG.music && CONFIG.music.enabled);
-  },
-
   unlock() {
-    if (!this.audioWanted) return;
+    if (!this.enabled) return;
     if (!this.ctx) {
       try {
         const AC = window.AudioContext || window.webkitAudioContext;

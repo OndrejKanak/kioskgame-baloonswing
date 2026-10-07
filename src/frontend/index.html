@@ -23,17 +23,109 @@
       <img class="brand-logo" src="assets/International_logo_red.png" alt="International player" />
     </section>
 
-    <!-- MENU výběru hry -->
+    <!-- MENU výběru hry
+         Hrají to děti kolem 4 let a většina neumí číst. Volbu proto nesou dvě
+         VELKÉ dlaždice, které vypadají jako tlačítka, a ruka, která na ně
+         střídavě ťuká – jinak náhledy působí jako ukázka hry, ne jako nabídka. -->
     <section id="screen-menu" class="screen">
+      <!-- Grafika ruky a šipky – nakreslená jednou, dlaždice si ji půjčují
+           přes <use>. Obojí je ve stylu samolepky (bílý okraj, tmavý obrys,
+           stín), aby se to neztratilo na pestrém pozadí s mraky. -->
+      <svg class="svg-defs" aria-hidden="true">
+        <defs>
+          <!-- ===== ruka: bílá rukavička, ukazovák nahoru ===== -->
+          <g id="hand-sil">
+            <rect x="34" y="4" width="21" height="64" rx="10.5" />  <!-- ukazovák -->
+            <rect x="52" y="40" width="18" height="34" rx="9" />    <!-- prostředníček -->
+            <rect x="66" y="46" width="17" height="30" rx="8.5" />  <!-- prsteníček -->
+            <rect x="79" y="54" width="14" height="27" rx="7" />    <!-- malíček -->
+            <rect x="30" y="54" width="63" height="52" rx="22" />   <!-- dlaň -->
+            <rect x="14" y="60" width="20" height="42" rx="10" transform="rotate(-35 26 100)" /> <!-- palec -->
+          </g>
+          <rect id="hand-cuff" x="36" y="100" width="52" height="22" rx="6" />
+          <clipPath id="hand-clip"><use href="#hand-sil" /></clipPath>
+
+          <g id="hand-art">
+            <!-- stín pod rukou -->
+            <g transform="translate(4 6)" fill="rgba(11,43,86,.28)" stroke="rgba(11,43,86,.28)"
+               stroke-width="8" stroke-linejoin="round">
+              <use href="#hand-sil" /><use href="#hand-cuff" />
+            </g>
+            <!-- obrys a bílá výplň (obrys pod výplní = čistá silueta bez vnitřních čar) -->
+            <use href="#hand-sil" fill="none" stroke="#0b2b56" stroke-width="8" stroke-linejoin="round" />
+            <use href="#hand-sil" fill="#fff" />
+            <!-- stínování pravé strany dává ruce objem -->
+            <g clip-path="url(#hand-clip)" fill="#dce7f5">
+              <rect x="64" y="0" width="40" height="130" />
+              <rect x="48" y="10" width="8" height="56" rx="4" />
+            </g>
+            <!-- rýhy mezi pokrčenými prsty -->
+            <path d="M68 52 V64 M81 60 V71" stroke="#0b2b56" stroke-width="3"
+                  stroke-linecap="round" fill="none" />
+            <!-- manžeta v barvě dlaždice (currentColor) -->
+            <use href="#hand-cuff" fill="currentColor" stroke="#0b2b56" stroke-width="6"
+                 stroke-linejoin="round" />
+            <rect x="41" y="105" width="42" height="5" rx="2.5" fill="rgba(255,255,255,.5)" />
+          </g>
+
+          <!-- ===== šipka (míří nahoru; pro "doprava" se otočí o 90°) ===== -->
+          <polygon id="arrow-shape" points="50,10 86,48 65,48 65,88 35,88 35,48 14,48" />
+          <linearGradient id="arrow-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff27a" />
+            <stop offset=".55" stop-color="#ffd23f" />
+            <stop offset="1" stop-color="#ffa800" />
+          </linearGradient>
+          <g id="arrow-shadow">
+            <use href="#arrow-shape" fill="rgba(11,43,86,.3)" stroke="rgba(11,43,86,.3)"
+                 stroke-width="24" stroke-linejoin="round" />
+          </g>
+          <g id="arrow-art">
+            <!-- bílý okraj samolepky -->
+            <use href="#arrow-shape" fill="#fff" stroke="#fff" stroke-width="24" stroke-linejoin="round" />
+            <!-- tmavý obrys -->
+            <use href="#arrow-shape" fill="#0b2b56" stroke="#0b2b56" stroke-width="12" stroke-linejoin="round" />
+            <!-- žluté tělo s přechodem -->
+            <use href="#arrow-shape" fill="url(#arrow-grad)" stroke="url(#arrow-grad)" stroke-width="3"
+                 stroke-linejoin="round" />
+            <!-- lesk -->
+            <path d="M50 19 L25 45 H33 L50 27 Z" fill="rgba(255,255,255,.6)" />
+            <rect x="39" y="51" width="6" height="31" rx="3" fill="rgba(255,255,255,.45)" />
+          </g>
+        </defs>
+      </svg>
+
       <h1 class="menu-title">Vyber si hru</h1>
       <div class="menu-grid">
-        <button class="game-card" data-game="balloon">
-          <canvas class="card-preview up" data-preview="up"></canvas>
-          <span class="card-label" data-label="balloon">Balónková výprava</span>
+        <button class="game-card card-up" data-game="balloon" aria-label="Hra: let nahoru">
+          <span class="card-view">
+            <canvas class="card-preview" data-preview="up"></canvas>
+          </span>
+          <svg class="card-arrow" viewBox="-2 -4 104 112" aria-hidden="true">
+            <use href="#arrow-shadow" transform="translate(0 5)" />
+            <use href="#arrow-art" />
+          </svg>
+          <span class="tap-hint" aria-hidden="true">
+            <span class="tap-ring"></span>
+            <span class="tap-ring tap-ring-2"></span>
+            <svg class="tap-hand" viewBox="-12 -4 120 140"><use href="#hand-art" /></svg>
+          </span>
+          <span class="card-label" data-label="balloon">Vzhůru!</span>
         </button>
-        <button class="game-card" data-game="game2">
-          <canvas class="card-preview right" data-preview="right"></canvas>
-          <span class="card-label" data-label="game2">Balónkový let</span>
+        <button class="game-card card-right" data-game="game2" aria-label="Hra: let do strany">
+          <span class="card-view">
+            <canvas class="card-preview" data-preview="right"></canvas>
+          </span>
+          <svg class="card-arrow" viewBox="-2 -4 104 112" aria-hidden="true">
+            <!-- stín se posouvá v osách obrazovky, šipka se otáčí – proto zvlášť -->
+            <g transform="translate(0 5)"><use href="#arrow-shadow" transform="rotate(90 50 50)" /></g>
+            <use href="#arrow-art" transform="rotate(90 50 50)" />
+          </svg>
+          <span class="tap-hint" aria-hidden="true">
+            <span class="tap-ring"></span>
+            <span class="tap-ring tap-ring-2"></span>
+            <svg class="tap-hand" viewBox="-12 -4 120 140"><use href="#hand-art" /></svg>
+          </span>
+          <span class="card-label" data-label="game2">Vpřed!</span>
         </button>
       </div>
       <img class="brand-logo small" src="assets/International_logo_red.png" alt="International player" />
@@ -73,7 +165,6 @@
   <script src="js/config.js"></script>
   <script src="js/assets.js"></script>
   <script src="js/sound.js"></script>
-  <script src="js/music.js"></script>
   <script src="js/gfx.js"></script>
   <script src="js/menu.js"></script>
   <script src="js/balloon.js"></script>

@@ -112,50 +112,189 @@ body {
   text-shadow: 0 0.5cqw 1.5cqw rgba(0,0,0,.5);
 }
 
-/* ===================== MENU ===================== */
+/* ===================== MENU =====================
+   Pro čtyřleté děti: dvě obří dlaždice přes skoro celou obrazovku.
+   Aby nepůsobily jako ukázka hry, ale jako tlačítka, mají:
+     - tlustý barevný rám a "tlustý spodek" (stín jako u fyzického tlačítka)
+     - zmáčknutí při dotyku
+     - ruku, která na ně střídavě ťuká, s kruhem jako po dotyku prstu */
+#screen-menu {
+  justify-content: flex-start;
+  gap: 2.4cqh;
+  padding: 4.5cqh 0 9.5cqh;   /* dole místo pro logo */
+}
 .menu-title {
   font-size: 8.5cqw;
   color: #fff;
-  margin: 0 0 2.5cqh;
+  margin: 0;
   text-shadow: 0 0.6cqw 0 #14407a, 0 1.4cqw 2cqw rgba(0,0,0,.4);
 }
 .menu-grid {
+  flex: 1;
+  min-height: 0;
+  width: 88cqw;
   display: flex;
   flex-direction: column;
-  gap: 3cqh;
-  width: 82%;
+  gap: 3.4cqh;
 }
 .game-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.2cqh;
-  padding: 2.4cqh 4cqw;
-  border: none;
-  border-radius: 7cqw;
-  background: rgba(255,255,255,.9);
-  box-shadow: 0 1.2cqw 0 rgba(0,0,0,.18), 0 2cqw 4cqw rgba(0,0,0,.22);
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  /* ořez obsahu dělá .card-view – samotné tlačítko ořez nemá, aby šipka
+     mohla přesahovat přes roh jako nalepená samolepka */
+  border: 1.8cqw solid var(--card-color);
+  border-radius: 6cqw;
+  background: #4ea3ef;
+  box-shadow:
+    0 1.8cqw 0 var(--card-shade),      /* tlustý spodek = vypadá jako tlačítko */
+    0 3cqw 4cqw rgba(0,0,0,.3);
   cursor: pointer;
-  transition: transform .08s ease;
   font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .08s ease, box-shadow .08s ease;
 }
-.game-card:active { transform: scale(.97); }
-/* Tvar náhledu sám naznačuje osu hry: na výšku = stoupání, na šířku = let */
+.game-card:active {
+  transform: translateY(1.4cqw);
+  box-shadow: 0 0.4cqw 0 var(--card-shade), 0 1cqw 2cqw rgba(0,0,0,.25);
+}
+/* Každá hra má svou barvu, ať se dají rozlišit i bez čtení. */
+.card-up    { --card-color: #ffc93c; --card-shade: #c98a00; }
+.card-right { --card-color: #5fd36b; --card-shade: #2f8f3a; }
+
+.card-view {
+  position: absolute;
+  inset: 0;
+  border-radius: 4.2cqw;   /* = zaoblení tlačítka 6cqw minus rám 1.8cqw */
+  overflow: hidden;
+}
 .card-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: block;
-  border-radius: 4cqw;
-  box-shadow: inset 0 0 0 0.5cqw rgba(11,43,86,.15);
 }
-.card-preview.up    { width: 32cqw; height: 40cqw; }
-.card-preview.right { width: 56cqw; height: 32cqw; }
-.card-emblem { --bw: 22cqw; }
+
+/* --- šipka směru: samolepka přes pravý horní roh dlaždice --------------- */
+.card-arrow {
+  position: absolute;
+  top: -4cqw;
+  right: -3cqw;
+  width: 21cqw;
+  overflow: visible;
+  pointer-events: none;
+  rotate: 8deg;            /* trochu nakřivo, jako nalepená rukou */
+  animation: arrow-up 1.3s infinite;
+}
+.card-right .card-arrow {
+  rotate: -6deg;
+  animation-name: arrow-right;
+}
+/* rychle dopředu, pomalu zpátky – jako když někdo ukazuje "tudy!" */
+@keyframes arrow-up {
+  0%   { translate: 0 0;      animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+  28%  { translate: 0 -2.2cqw; animation-timing-function: ease-in-out; }
+  100% { translate: 0 0; }
+}
+@keyframes arrow-right {
+  0%   { translate: 0 0;      animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+  28%  { translate: 2.2cqw 0; animation-timing-function: ease-in-out; }
+  100% { translate: 0 0; }
+}
+
+/* Název hry – pro rodiče. Ve výchozím stavu skrytý (config: menu.showNames). */
 .card-label {
-  font-size: 5.6cqw;
+  position: absolute;
+  left: 50%;
+  bottom: 2cqh;
+  transform: translateX(-50%);
+  padding: 0.5cqh 4.5cqw;
+  border-radius: 99px;
+  background: rgba(255,255,255,.92);
+  font-size: 5.2cqw;
   font-weight: 800;
   color: #0b2b56;
+  white-space: nowrap;
+  pointer-events: none;
 }
-/* druhá hra: stejný balon, jen barevně odlišený (modrý nádech) */
-.flappy-tint { filter: hue-rotate(150deg) saturate(.9); }
+
+/* --- ruka, která ťuká --------------------------------------------------
+   .tap-hint je bod nulové velikosti = místo, kam ruka ťuká. Ruka i kruh se
+   kolem něj rozmisťují tak, aby bříško prstu leželo přesně na něm. */
+.svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+/* Ruka stojí mimo dráhu balonu: nahoře mezi oběma pruhy, kterými balon
+   uhýbá, dole vpravo od balonu, který poskakuje vlevo. */
+.tap-hint {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.card-right .tap-hint { left: 63%; top: 44%; }
+
+/* dva kroužky těsně po sobě = vlnka jako po dotyku prstu na vodě */
+.tap-ring {
+  position: absolute;
+  left: -8cqw;
+  top: -8cqw;
+  width: 16cqw;
+  height: 16cqw;
+  border-radius: 50%;
+  border: 1.2cqw solid #fff;
+  box-shadow: 0 0 0 0.5cqw rgba(11,43,86,.25);
+  opacity: 0;
+  animation: tap-ring 3.4s ease-out infinite;
+}
+.tap-ring-2 { animation-name: tap-ring-2; }
+
+.tap-hand {
+  position: absolute;
+  /* bříško ukazováku je v SVG na 47 % šířky a 11,4 % výšky;
+     při šířce 24cqw (výška 28cqw) to dělá posun 11,3cqw a 3,2cqw */
+  left: -11.3cqw;
+  top: -3.2cqw;
+  width: 24cqw;
+  overflow: visible;
+  transform-origin: 11.3cqw 3.2cqw;
+  color: var(--card-color);  /* manžeta rukavičky v barvě dlaždice */
+  opacity: 0;
+  animation: tap-hand 3.4s ease-in-out infinite;
+}
+
+/* Ruka ťukne na první dlaždici, pak na druhou, pak zase na první…
+   Druhá dlaždice je posunutá o půl cyklu. Animuje se jen transform a opacity,
+   což zvládne grafický čip sám – na Pi to nic nestojí. */
+.card-right .tap-hand,
+.card-right .tap-ring { animation-delay: -1.7s; }
+
+@keyframes tap-hand {
+  0%        { opacity: 0; transform: translate(5cqw, 8cqw) rotate(12deg); }
+  10%       { opacity: 1; transform: translate(0, 0) rotate(0); }
+  15%       { transform: translate(0, -1cqw); }       /* nádech */
+  19%       { transform: scale(.84); }                /* ťuk */
+  26%       { transform: scale(1); }
+  36%       { opacity: 1; transform: translate(0, 0); }
+  46%, 100% { opacity: 0; transform: translate(5cqw, 8cqw) rotate(12deg); }
+}
+@keyframes tap-ring {
+  0%, 18%   { opacity: 0;   transform: scale(.2); }
+  20%       { opacity: .95; transform: scale(.3); }
+  44%, 100% { opacity: 0;   transform: scale(1.7); }
+}
+@keyframes tap-ring-2 {
+  0%, 23%   { opacity: 0;   transform: scale(.2); }
+  25%       { opacity: .8;  transform: scale(.3); }
+  48%, 100% { opacity: 0;   transform: scale(1.4); }
+}
 
 /* ===================== HRA: balon ===================== */
 #balloon-canvas {

@@ -164,15 +164,6 @@ const CONFIG = {
     volume: 0.5,   // 0..1
   },
 
-  // --- Hudba na pozadí ----------------------------------------------------
-  //  Skládá se proceduálně v music.js, takže je bez autorských práv
-  //  a nepotřebuje žádné soubory. Každá obrazovka má svou skladbu:
-  //    lobby (atraktor + menu + Ahoj), game1 (výprava), game2 (let)
-  music: {
-    enabled: true,
-    volume: 0.30,  // 0..1 – schválně tišší než efekty
-  },
-
   // --- Výkon (hlavně pro Raspberry Pi) ------------------------------------
   //  Hry kreslí celou obrazovku (1080x1920 = 2 mil. pixelů) každý snímek.
   //  Když se na Pi sekají, ubírej postupně:
@@ -218,7 +209,10 @@ const CONFIG = {
   //  sděluje hlavně živý náhled v kartě (tvar + pohyb + šipky).
   //  Názvy jsou tedy spíš pro doprovod; showNames: false je úplně skryje.
   menu: {
-    showNames: true,
+    // Názvy her pod dlaždicemi. Čtyřleté dítě je nepřečte a menu pak spíš
+    // připomíná návod, proto jsou ve výchozím stavu skryté – volbu nese
+    // obrázek, barva dlaždice a ruka, která na ni ťuká.
+    showNames: false,
     names: {
       balloon: 'Vzhůru!',
       game2: 'Vpřed!',

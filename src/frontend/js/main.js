@@ -68,14 +68,7 @@ const App = {
 
     // zvuk smí prohlížeč pustit až po dotyku -> odemknout při každém ťuknutí
     // (na kiosku to řeší Chromium flag --autoplay-policy=no-user-gesture-required)
-    window.addEventListener(
-      'pointerdown',
-      () => {
-        Sound.unlock();
-        Music.resume(); // hudba se rozjede, jakmile to prohlížeč dovolí
-      },
-      true
-    );
+    window.addEventListener('pointerdown', () => Sound.unlock(), true);
 
     this._wireUI();
     this._connectSSE();
@@ -139,22 +132,11 @@ const App = {
   },
 
   // ---- přepínání obrazovek ----------------------------------------------
-  /** Která skladba patří ke které obrazovce. */
-  MUSIC_FOR: {
-    attract: 'lobby',
-    menu: 'lobby',
-    goodbye: 'lobby',
-    balloon: 'game1',
-    game2: 'game2',
-  },
-
   show(name) {
     this.state = name;
     for (const key in this.screens) {
       this.screens[key].classList.toggle('active', key === name);
     }
-    const track = this.MUSIC_FOR[name];
-    if (track) Music.play(track);
 
     // náhledy v kartách běží jen když je menu vidět (šetří výkon na Pi)
     if (this.previews) {

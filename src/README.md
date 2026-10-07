@@ -11,11 +11,22 @@ signál simulovat bez hardwaru.
 ## Co to umí teď
 
 - **Atraktor** (klidová obrazovka): výzva „Vlož minci / přilož kartu".
-- **Menu** se dvěma hrami: *Vzhůru!* + *Vpřed!*. Hráči jsou předškoláci,
-  kteří většinou neumí číst, takže rozdíl mezi hrami sděluje hlavně **živý
-  náhled** v každé kartě – naznačuje směr třemi způsoby najednou: tvarem
-  (na výšku vs. na šířku), pohybem mraků a poskakujícími šipkami.
-  Názvy a jejich skrytí: `config.js` → `menu.names` / `menu.showNames`.
+- **Menu** se dvěma hrami: *Vzhůru!* + *Vpřed!*. Hrají to děti kolem 4 let,
+  které neumí číst, takže volba stojí čistě na obrázku:
+  - dvě **obří dlaždice** přes skoro celou obrazovku, s tlustým barevným
+    rámem a „tlustým spodkem" – vypadají jako tlačítka, ne jako ukázka hry
+  - v každé dlaždici se **hra sama hraje**: nahoře padají mraky a balon jim
+    uhýbá doleva a doprava, dole balon poskakuje mezerami mezi sloupy mraků
+  - **šipka směru** jako lesklá samolepka přes roh dlaždice
+  - **ruka (rukavička), která střídavě ťuká** na jednu a pak na druhou
+    dlaždici, s vlnkou jako po dotyku prstu; manžeta má barvu dlaždice
+  - každá hra má svou **barvu rámu** (žlutá / zelená)
+
+  Šipky a ruka jsou SVG v `index.html`, takže zůstanou ostré i při
+  sníženém rozlišení plátna. Hratelnost náhledů je v `menu.js`.
+
+  Názvy her jsou ve výchozím stavu skryté – zapnou se v `config.js` →
+  `menu.showNames`, texty jsou v `menu.names`.
 - **Hra 1 – Vzhůru!** (stoupání): balon stoupá sám do oblak a sleduje prst
   **ve všech směrech** (do stran i nahoru/dolů), naklání se po směru letu.
   Mrak je **překážka**: balon od něj odskočí dolů, a dokud mu hráč neuhne,
@@ -55,15 +66,6 @@ signál simulovat bez hardwaru.
 - **Zvuky:** procedurální WebAudio (odraz, hvězdička, ťuknutí, racek,
   prasknutí bubliny, pírko, duha, hučení proudu, fanfára) – žádné soubory,
   funguje offline. Vypnutí: `config.js` → `sound.enabled`.
-- **Hudba na pozadí:** tři skladby, každá se **skládá proceduálně v kódu**
-  ([`music.js`](frontend/js/music.js)), takže je **bez autorských práv**,
-  nepotřebuje žádné soubory a funguje offline:
-  - `lobby` – klidný valčík 3/4 (atraktor, menu, obrazovka „Ahoj")
-  - `game1` – snivá, vzdušná (Balónková výprava)
-  - `game2` – hopsavá s poskakujícím basem (Balónkový let)
-
-  Skladba se přepíná automaticky podle obrazovky a plynule se prolne.
-  Hlasitost/vypnutí: `config.js` → `music.volume` / `music.enabled`.
 - **Konec jízdy:** obrazovka „Ahoj" ukáže nasbírané hvězdičky a nalétané
   metry (jen za tuto jízdu) → zpět na atraktor.
 
@@ -84,9 +86,8 @@ src/
 │   │   ├── config.js     # ← TADY se ladí chování a cesty ke grafice
 │   │   ├── assets.js     # nahrávání obrázků
 │   │   ├── sound.js      # procedurální zvuky (WebAudio)
-│   │   ├── music.js      # procedurální hudba (3 skladby, bez copyrightu)
 │   │   ├── gfx.js        # sdílené kreslení (mraky, hvězdy, HUD, částice…)
-│   │   ├── menu.js       # živé náhledy her v kartách menu (směr letu)
+│   │   ├── menu.js       # dlaždice menu: zmenšené hry, které se hrají samy
 │   │   ├── fun.js        # sdílené zábavné prvky (racek, bubliny, duha…)
 │   │   ├── balloon.js    # hra 1: Balónková výprava (stoupání, překážky)
 │   │   ├── flappy.js     # hra 2: Balónkový let (ťukni = poskoč)
@@ -246,8 +247,6 @@ PC817: 1 = anoda, 2 = katoda, 3 = emitor, 4 = kolektor (tečka = nožička 1).
 | Názvy her v menu / skrytí názvů | `menu.names` / `menu.showNames` |
 | **Výkon na Pi (sekání)** | `perf.renderScale` (provozně 0.4), viz níže |
 | Zvuk (zap/vyp, hlasitost) | `sound.enabled` / `volume` |
-| Hudba (zap/vyp, hlasitost) | `music.enabled` / `music.volume` |
-| Melodie skladeb | `music.js` → `Music.tracks` |
 | Délka obrazovky „Ahoj" | `timing.goodbyeMs` |
 | DEV nástroje on/off | `debug` |
 
