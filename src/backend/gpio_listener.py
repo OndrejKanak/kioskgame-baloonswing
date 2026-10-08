@@ -52,11 +52,17 @@ class RideSignal:
             )
             self._button.when_pressed = self._fire_start   # náběžná hrana
             self._button.when_released = self._fire_end     # sestupná hrana
+            # Hrany zachytí jen ZMĚNU. Když aplikace startuje uprostřed jízdy
+            # (např. po výpadku proudu), žádná hrana nepřijde – proto si
+            # počáteční stav přečteme rovnou. Prohlížeč si ho po připojení
+            # vyžádá přes SSE (událost "state") a srovná se.
+            self.active = bool(self._button.is_pressed)
             self.hardware = True
             log.info(
-                "GPIO listener aktivní na pinu %s (jízda = %s)",
+                "GPIO listener aktivní na pinu %s (jízda = %s), teď: %s",
                 self.pin,
                 "3,3 V" if self.active_high else "spojeno se zemí",
+                "JÍZDA BĚŽÍ" if self.active else "klid",
             )
         except Exception as exc:  # noqa: BLE001 – chceme zachytit cokoliv (import i HW chyby)
             log.warning(

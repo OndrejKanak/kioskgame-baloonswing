@@ -23,6 +23,11 @@ body {
   align-items: center;
   justify-content: center;
 }
+/* Ostrý provoz (config debug: false) – na dotykovém kiosku kurzor nepatří */
+body.kiosk-mode,
+body.kiosk-mode * {
+  cursor: none !important;
+}
 
 /* Největší box 9:16, který se vejde do okna */
 #stage {

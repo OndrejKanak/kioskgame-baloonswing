@@ -27,6 +27,11 @@ signál simulovat bez hardwaru.
 
   Názvy her jsou ve výchozím stavu skryté – zapnou se v `config.js` →
   `menu.showNames`, texty jsou v `menu.names`.
+
+  **Automatický start:** když si dítě v menu do 15 s nic nevybere, spustí
+  se samo *Vzhůru!*, ať zaplacená jízda neprojde u nabídky. Platí po minci
+  i po návratu do menu tlačítkem „‹ Menu". Čas a hra: `menu.autoStartMs`
+  (0 = vypnuto) a `menu.autoStartGame`.
 - **Hra 1 – Vzhůru!** (stoupání): balon stoupá sám do oblak a sleduje prst
   **ve všech směrech** (do stran i nahoru/dolů), naklání se po směru letu.
   Mrak je **překážka**: balon od něj odskočí dolů, a dokud mu hráč neuhne,
@@ -109,12 +114,13 @@ pip install -r requirements.txt   # nainstaluje jen Flask (GPIO se na PC vynech�
 python app.py
 ```
 
-Otevři **http://localhost:5000**.
+Otevři **http://localhost:5000/?debug** (bez `?debug` uvidíš ostrý provoz –
+bez DEV lišty a bez kurzoru).
 
 Dole je **DEV lišta**: tlačítko *Simuluj jízdu* (nebo klávesa **G**) přepíná
 „jízda začala / skončila", takže projdeš celým tokem bez hardwaru.
-V DEV režimu jde balon řídit i **šipkami ←/→**. DEV lištu vypneš nastavením
-`debug: false` v [`config.js`](frontend/js/config.js).
+V DEV režimu jde balon řídit i **šipkami ←/→**. Výchozí stav je v
+[`config.js`](frontend/js/config.js) → `debug` (pro provoz `false`).
 
 > Hru lze rozjet i bez backendu (otevřením `frontend/index.html`), ale doporučená
 > cesta je přes Flask, protože tak funguje i signál jízdy a SSE.
@@ -122,13 +128,53 @@ V DEV režimu jde balon řídit i **šipkami ←/→**. DEV lištu vypneš nasta
 ## Spuštění na Raspberry Pi 5
 
 ```bash
-cd src/backend
-pip install -r requirements.txt        # na Pi doinstaluje gpiozero + lgpio
-chmod +x ../deploy/start-kiosk.sh
-../deploy/start-kiosk.sh
+cd ~/kioskgame-baloonswing
+./src/deploy/start-kiosk.sh                   # ostrý provoz
+KIOSK_DEBUG=1 ./src/deploy/start-kiosk.sh     # s DEV lištou a klávesou G
 ```
 
-Autostart po bootu: viz komentář v [`deploy/kiosk.service`](deploy/kiosk.service).
+Závislosti (Flask, gpiozero, lgpio) ber z apt – Bookworm má systémový Python
+chráněný a `pip install` odmítne:
+`sudo apt install -y python3-flask python3-gpiozero python3-lgpio`
+
+### Ostrý provoz
+
+**Co dělá ostrý režim** (`debug: false`, výchozí):
+- žádná DEV lišta, nejde simulovat jízdu klávesou G
+- schovaný kurzor, zablokované kontextové menu po dlouhém podržení prstu
+- backend poslouchá jen na `127.0.0.1` – nikdo ze sítě nemůže přes
+  `/dev/trigger` přepínat obrazovky (pro ladění z jiného PC: `HOST=0.0.0.0`)
+- [`start-kiosk.sh`](deploy/start-kiosk.sh) hlídá backend i Chromium; když
+  kterýkoli spadne, ukončí oba a služba celý kiosk do 3 s spustí znovu
+- po startu uprostřed jízdy (výpadek proudu) se jízda pozná podle stavu pinu
+
+**Jednorázové nastavení Pi** – `sudo raspi-config`:
+1. *System Options → Boot / Auto Login → **Desktop Autologin***
+2. *Display Options → Screen Blanking → **No*** (jinak displej po chvíli zhasne)
+3. změň heslo uživatele: `passwd`
+
+**Autostart** (systemd uživatelská služba, podrobnosti v
+[`deploy/kiosk.service`](deploy/kiosk.service)):
+
+```bash
+cd ~/kioskgame-baloonswing && mkdir -p ~/.config/systemd/user
+sed "s|^ExecStart=.*|ExecStart=$PWD/src/deploy/start-kiosk.sh|" src/deploy/kiosk.service > ~/.config/systemd/user/kiosk.service
+systemctl --user daemon-reload && systemctl --user reenable kiosk.service
+sudo loginctl enable-linger $USER
+```
+
+| Co chceš | Příkaz (vždy **bez sudo**, s `--user`) |
+|---|---|
+| restartovat kiosk | `systemctl --user restart kiosk` |
+| zastavit (ladění) | `systemctl --user stop kiosk` |
+| stav | `systemctl --user status kiosk` |
+| živý log | `journalctl --user -u kiosk -f` |
+
+**Úplně nakonec – ochrana SD karty:** *raspi-config → Performance Options →
+**Overlay File System*** → zapnout. Systém pak běží jen pro čtení a vypnutí
+proudu (houpadlo se večer vypíná vypínačem) kartu nepoškodí. Pozor: od té
+chvíle se **neuloží žádná změna** – na aktualizaci overlay vypnout, restart,
+`git pull`, zapnout, restart.
 
 **Emoji font:** čisté Raspberry Pi OS ho nemusí mít a emoji by se
 vykreslila jako prázdné rámečky. Doinstaluj ho:
@@ -245,10 +291,11 @@ PC817: 1 = anoda, 2 = katoda, 3 = emitor, 4 = kolektor (tečka = nožička 1).
 | Obruče, racek na sloupu, poryv (hra 2) | `flappy.hoopChance`, `perchChance`, `gust*` |
 | Náklon balonu, parallax, ptáčci, šmouhy | `effects.*` |
 | Názvy her v menu / skrytí názvů | `menu.names` / `menu.showNames` |
+| Automatický start hry z menu (čas, která hra) | `menu.autoStartMs` / `menu.autoStartGame` |
 | **Výkon na Pi (sekání)** | `perf.renderScale` (provozně 0.4), viz níže |
 | Zvuk (zap/vyp, hlasitost) | `sound.enabled` / `volume` |
 | Délka obrazovky „Ahoj" | `timing.goodbyeMs` |
-| DEV nástroje on/off | `debug` |
+| DEV nástroje on/off | `debug` (nebo jen `?debug` v adrese / `KIOSK_DEBUG=1`) |
 
 ## Když se hra na Raspberry Pi seká
 

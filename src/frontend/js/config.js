@@ -7,9 +7,13 @@
 //  velikost okna, takže vypadá stejně na PC náhledu i na displeji kiosku.
 // ============================================================================
 const CONFIG = {
+  // false = ostrý provoz na houpadle (vše řídí jen signál z GPIO, schovaný
+  //         kurzor, žádné kontextové menu po dlouhém podržení prstu).
   // true  = ukáže DEV lištu dole + klávesové zkratky (G = simuluj jízdu).
-  // false = ostrý provoz na houpadle (vše řídí jen signál z GPIO).
-  debug: true,
+  //
+  // Na ladění NENÍ potřeba tohle přepisovat – stačí otevřít stránku s ?debug
+  // (http://localhost:5000/?debug), na Pi spustit KIOSK_DEBUG=1 start-kiosk.sh.
+  debug: false,
 
   // --- Cesty ke grafice. Stačí vyměnit soubory ve složce assets/ ---------
   assets: {
@@ -213,6 +217,10 @@ const CONFIG = {
     // připomíná návod, proto jsou ve výchozím stavu skryté – volbu nese
     // obrázek, barva dlaždice a ruka, která na ni ťuká.
     showNames: false,
+    // Když si dítě v menu nic nevybere, spustí se po této době hra samo,
+    // ať jízda neprojde nevyužitá. 0 = vypnuto (menu čeká neomezeně).
+    autoStartMs: 15000,
+    autoStartGame: 'balloon',   // 'balloon' = Vzhůru!, 'game2' = Vpřed!
     names: {
       balloon: 'Vzhůru!',
       game2: 'Vpřed!',
@@ -224,3 +232,6 @@ const CONFIG = {
     goodbyeMs: 5000,   // jak dlouho svítí "Ahoj" s výsledky po konci jízdy
   },
 };
+
+// Ladicí režim jde zapnout i bez úpravy tohoto souboru: http://…/?debug
+if (new URLSearchParams(location.search).has('debug')) CONFIG.debug = true;

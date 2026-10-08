@@ -136,6 +136,10 @@ if __name__ == "__main__":
     # Port jde přepsat proměnnou PORT (např. když je 5000 obsazený).
     # Bez ní zůstává 5000, takže na Pi i ve start skriptech se nic nemění.
     port = int(os.environ.get("PORT", 5000))
-    log.info("Poslouchám na portu %s", port)
+    # Ve výchozím stavu jen pro tento počítač – prohlížeč kiosku běží na
+    # stejném Pi. Jinak by kdokoli ve stejné síti mohl přes /dev/trigger
+    # přepínat obrazovky. Pro ladění z jiného PC: HOST=0.0.0.0
+    host = os.environ.get("HOST", "127.0.0.1")
+    log.info("Poslouchám na %s:%s", host, port)
     # threaded=True je nutné pro souběžné SSE streamy
-    app.run(host="0.0.0.0", port=port, threaded=True)
+    app.run(host=host, port=port, threaded=True)

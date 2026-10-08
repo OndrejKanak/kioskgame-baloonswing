@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-# Spustí backend a Chromium v kiosk módu. Určeno pro Raspberry Pi OS (Bookworm).
+# Spustí backend a Chromium v kiosk módu. Určeno pro Raspberry Pi OS (Bookworm, Wayland).
+#
+# Skript HLÍDÁ oba procesy: když kterýkoli skončí (pád, zavření okna), ukončí
+# i ten druhý a sám skončí s chybou. Služba kiosk.service (Restart=always) pak
+# celý kiosk do pár sekund spustí znovu – bez toho by po pádu backendu Chromium
+# běžel dál a kiosk by tiše přestal reagovat na mince.
+#
+# Ladění na Pi:  KIOSK_DEBUG=1 ./start-kiosk.sh   (DEV lišta, klávesa G, kurzor)
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,12 +18,51 @@ cd "$APP_DIR/backend"
 export RIDE_PIN=17
 export RIDE_ACTIVE_HIGH=1
 
-# 1) backend (Flask + GPIO listener)
+URL="http://localhost:5000/"
+if [ "${KIOSK_DEBUG:-0}" = "1" ]; then
+  URL="${URL}?debug"
+  echo "Ladicí režim (DEV lišta, klávesa G)."
+fi
+
+BACKEND_PID=""
+CHROMIUM_PID=""
+cleanup() {
+  for pid in $CHROMIUM_PID $BACKEND_PID; do
+    kill "$pid" 2>/dev/null || true
+  done
+}
+trap cleanup EXIT
+
+# 1) Grafická relace (Wayland).
+#    Služba systemd nezdědí proměnné z přihlášené relace, takže socket
+#    kompozitoru najdeme sami. Po bootu se uživatel teprve automaticky
+#    přihlašuje – proto na něj chvíli počkáme.
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+  echo "Čekám na grafickou relaci (Wayland)…"
+  for _ in $(seq 1 90); do
+    for s in "$XDG_RUNTIME_DIR"/wayland-*; do
+      case "$s" in *.lock) continue ;; esac
+      if [ -S "$s" ]; then
+        export WAYLAND_DISPLAY="${s##*/}"
+        break 2
+      fi
+    done
+    sleep 1
+  done
+fi
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+  echo "CHYBA: grafická relace (Wayland) neběží." >&2
+  echo "Zkontroluj raspi-config → System Options → Boot / Auto Login → Desktop Autologin." >&2
+  exit 1
+fi
+echo "Grafická relace: $WAYLAND_DISPLAY"
+
+# 2) Backend (Flask + GPIO listener)
 python3 app.py &
 BACKEND_PID=$!
-trap 'kill $BACKEND_PID 2>/dev/null || true' EXIT
 
-# 2) počkej, až backend naběhne (max 20 s)
+# 3) Počkej, až backend naběhne (max 20 s).
 #    Port testujeme přímo bashem (/dev/tcp), ne curlem – curl na Pi být nemusí
 #    a když chybí, kontrola by nikdy neuspěla a Chromium by naběhl naprázdno.
 echo "Čekám na backend…"
@@ -45,12 +91,8 @@ if [ "${BACKEND_UP:-0}" != "1" ]; then
   exit 1
 fi
 
-# 3) vypni šetřič/blank a schovej kurzor (pokud jsou nástroje k dispozici)
-xset s off -dpms 2>/dev/null || true
-command -v unclutter >/dev/null 2>&1 && unclutter -idle 0 &
-
-# 4) Chromium v kiosku (Wayland varianta dle předávacího dokumentu).
-#    Pozn.: binárka může být 'chromium' nebo 'chromium-browser' podle verze OS.
+# 4) Chromium v kiosku.
+#    Binárka může být 'chromium' nebo 'chromium-browser' podle verze OS.
 CHROMIUM="$(command -v chromium-browser || command -v chromium || true)"
 if [ -z "$CHROMIUM" ]; then
   echo "CHYBA: Chromium nenalezen (zkoušel jsem 'chromium-browser' i 'chromium')." >&2
@@ -58,11 +100,33 @@ if [ -z "$CHROMIUM" ]; then
   exit 1
 fi
 
-echo "Spouštím Chromium na http://localhost:5000"
+# Příznaky navíc proti oknům, která v kiosku nejdou zavřít:
+#   --password-store=basic     dotaz na heslo klíčenky po automatickém přihlášení
+#   --disable-features=Translate  nabídka "Přeložit tuto stránku?"
+#   --no-first-run / --no-default-browser-check  uvítání a "nastavit jako výchozí"
+#   --disable-session-crashed-bubble  "Chromium nebyl správně ukončen" po výpadku
+echo "Spouštím Chromium na $URL"
 "$CHROMIUM" --kiosk \
   --enable-features=UseOzonePlatform --ozone-platform=wayland \
   --noerrdialogs --disable-infobars --incognito \
+  --no-first-run --no-default-browser-check \
+  --password-store=basic \
+  --disable-features=Translate \
+  --disable-session-crashed-bubble \
   --disable-pinch --overscroll-history-navigation=0 \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
-  http://localhost:5000
+  "$URL" &
+CHROMIUM_PID=$!
+
+# 5) Hlídání: čekej, dokud jeden z nich neskončí. Pak ukonči i druhý
+#    (trap cleanup) a skonči s chybou – systemd spustí celý kiosk znovu.
+set +e
+wait -n
+code=$?
+if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+  echo "Backend skončil (kód $code) – ukončuji kiosk." >&2
+else
+  echo "Chromium skončil (kód $code) – ukončuji kiosk." >&2
+fi
+exit 1

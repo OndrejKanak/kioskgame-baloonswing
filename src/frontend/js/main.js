@@ -15,6 +15,7 @@ const App = {
   sseConnected: false,
   game: null,
   _goodbyeTimer: null,
+  _autoStartTimer: null,
   // souhrn za jednu jízdu (nikam se neukládá, jen pro obrazovku "Ahoj")
   session: { stars: 0, meters: 0 },
 
@@ -137,6 +138,8 @@ const App = {
     for (const key in this.screens) {
       this.screens[key].classList.toggle('active', key === name);
     }
+    // Každé přepnutí obrazovky časovač zruší; nastaví se znovu jen v menu.
+    this._armAutoStart(name === 'menu');
 
     // náhledy v kartách běží jen když je menu vidět (šetří výkon na Pi)
     if (this.previews) {
@@ -184,6 +187,21 @@ const App = {
     Sound.pop();
     this._stopGame();
     this.show('menu');
+  },
+
+  /** Když si dítě v menu do autoStartMs nic nevybere, spustí se samo
+   *  první hra – ať zaplacená jízda neprojde u nabídky. */
+  _armAutoStart(on) {
+    clearTimeout(this._autoStartTimer);
+    this._autoStartTimer = null;
+    const M = CONFIG.menu || {};
+    if (!on || !M.autoStartMs) return;
+    this._autoStartTimer = setTimeout(() => {
+      this._autoStartTimer = null;
+      if (this.state === 'menu' && this.rideActive) {
+        this.selectGame(M.autoStartGame || 'balloon');
+      }
+    }, M.autoStartMs);
   },
 
   _stopGame() {
@@ -278,6 +296,13 @@ const App = {
     this.devBar = document.getElementById('dev-bar');
     if (!CONFIG.debug) {
       if (this.devBar) this.devBar.style.display = 'none';
+      // Ostrý provoz: bez kurzoru (na dotykovém displeji by zůstal viset tam,
+      // kde se naposledy ťuklo) a bez kontextového menu / tažení obrázků,
+      // které Chromium otevře po dlouhém podržení prstu.
+      document.body.classList.add('kiosk-mode');
+      for (const ev of ['contextmenu', 'dragstart']) {
+        window.addEventListener(ev, (e) => e.preventDefault());
+      }
       return;
     }
     this.devBar.style.display = 'flex';
